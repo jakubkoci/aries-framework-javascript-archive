@@ -9,8 +9,5 @@ module.exports = {
   rules: {
     // Type is enforced by callers. Not entirely, but it's good enough.
     '@typescript-eslint/explicit-function-return-type': 'off',
-    // TSC checks it.
-    '@typescript-eslint/no-unused-vars': 'off',
-    'no-undef': 'off',
   },
 };
