@@ -1,19 +1,310 @@
 import indy from 'indy-sdk';
+import fetch from 'node-fetch';
 
-async function init() {
+const config = {
+  label: 'Alice or Bob',
+  seed: '000000000000000000000000Steward1',
+};
+
+enum ConnectionState {
+  INIT,
+  INVITED,
+  REQUESTED,
+  RESPONDED,
+}
+
+interface Connection {
+  did: Did;
+  verkey: Verkey;
+  theirDid?: Did;
+  theirKey?: Verkey;
+  invitation?: {};
+  state: ConnectionState;
+}
+
+interface Message {
+  '@id': string;
+  '@type': string;
+  [key: string]: any;
+}
+
+interface InboundMessage {
+  message: Message;
+  sender_verkey: Verkey; // TODO make it optional
+  recipient_verkey: Verkey; // TODO make it optional
+}
+
+interface OutboundMessage {
+  endpoint: string;
+  payload: Message;
+  recipientKeys: Verkey[];
+  routingKeys: Verkey[];
+  senderVk: Verkey | null;
+}
+
+let wh: number;
+const connections: Connection[] = [];
+
+export async function processMessage(inboundPackedMessage: any) {
+  let inboundMessage;
+
+  if (!inboundPackedMessage['@type']) {
+    inboundMessage = await unpack(inboundPackedMessage);
+  } else {
+    inboundMessage = { message: inboundPackedMessage };
+  }
+
+  const outboundMessage = await dispatch(inboundMessage);
+
+  const outboundPackedMessage = await pack(outboundMessage);
+  return outboundPackedMessage;
+
+  // TODO
+  // send message and update connection state
+  // fetch(outboundMessage.endpoint, { method: 'POST', body: JSON.stringify(outboundPackedMessage) });
+  // connection.state = ConnectionState.XXX;
+}
+
+export async function dispatch(unpackedMessage: any): Promise<OutboundMessage> {
+  const messageType = unpackedMessage.message['@type'];
+  switch (messageType) {
+    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation': {
+      return handleInvitation(unpackedMessage);
+    }
+    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request': {
+      return handleConnectionRequest(unpackedMessage);
+    }
+    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response': {
+      return handleConnectionResponse(unpackedMessage);
+    }
+    default:
+      throw new Error('No handler for message found');
+  }
+}
+
+export async function init() {
   const walletConfig = { id: 'wallet-1' };
   const walletCredentials = { key: 'key' };
 
-  await indy.createWallet(walletConfig, walletCredentials);
-  const wh = await indy.openWallet(walletConfig, walletCredentials);
+  try {
+    await indy.createWallet(walletConfig, walletCredentials);
+  } catch (error) {
+    if (error.indyName && error.indyName === 'WalletAlreadyExistsError') {
+      console.log(error.indyName);
+    } else {
+      throw error;
+    }
+  }
 
-  // List, create, and get
-  const [did, verkey] = await indy.createAndStoreMyDid(wh, { seed: '000000000000000000000000Steward1' });
-  console.log(did, verkey);
+  wh = await indy.openWallet(walletConfig, walletCredentials);
+  console.log(`Wallet opened with handle: ${wh}`);
 }
 
-function main() {
-  init();
+export async function createConnection(): Promise<Connection> {
+  const [did, verkey] = await indy.createAndStoreMyDid(wh, {});
+  return {
+    did,
+    verkey,
+    state: ConnectionState.INIT,
+  };
 }
 
-main();
+export async function createInvitation() {
+  const connection = await createConnection();
+  const { verkey } = connection;
+  const invitation = {
+    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation',
+    '@id': '12345678900987654321',
+    label: config.label,
+    recipientKeys: [verkey],
+    serviceEndpoint: 'https://localhost:8080/msg',
+    routingKeys: [],
+  };
+
+  connection.state = ConnectionState.INVITED;
+  connection.invitation = invitation;
+  connections.push(connection);
+  return connection;
+}
+
+export async function handleInvitation(inboundMessage: InboundMessage) {
+  const invitation = inboundMessage.message;
+  const connection = await createConnection();
+  const connectionRequest = {
+    '@id': '5678876542345',
+    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request',
+    label: config.label,
+    connection: {
+      did: connection.did,
+      did_doc: {
+        '@context': 'https://w3id.org/did/v1',
+        service: [
+          {
+            id: 'did:example:123456789abcdefghi#did-communication',
+            type: 'did-communication',
+            priority: 0,
+            recipientKeys: [connection.verkey],
+            routingKeys: [],
+            serviceEndpoint: 'https://agent.example.com/',
+          },
+        ],
+      },
+    },
+  };
+
+  connections.push(connection);
+
+  const outboundMessage = {
+    endpoint: invitation.serviceEndpoint,
+    payload: connectionRequest,
+    recipientKeys: invitation.recipientKeys,
+    routingKeys: [],
+    senderVk: null,
+  };
+
+  return outboundMessage;
+}
+
+export async function handleConnectionRequest(unpackedMessage: InboundMessage) {
+  const { message, recipient_verkey, sender_verkey } = unpackedMessage;
+  const connection = findByVerkey(recipient_verkey);
+
+  if (!connection) {
+    throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+  }
+
+  if (!message.connection) {
+    throw new Error('Invalid message');
+  }
+
+  const connectionRequest = message;
+
+  connection.theirDid = connectionRequest.connection.did;
+  connection.theirKey = connectionRequest.connection.did_doc.service[0].recipientKeys[0];
+
+  if (!connection.theirKey) {
+    throw new Error('Missing verkey in connection request!');
+  }
+
+  const connectionResponse = {
+    connection: {
+      did: connection.did,
+      did_doc: {
+        '@context': 'https://w3id.org/did/v1',
+        service: [
+          {
+            id: 'did:example:123456789abcdefghi#did-communication',
+            type: 'did-communication',
+            priority: 0,
+            recipientKeys: [connection.verkey],
+            routingKeys: [],
+            serviceEndpoint: 'https://agent.example.com/',
+          },
+        ],
+      },
+    },
+  };
+
+  const signatureBuffer = await indy.cryptoSign(
+    wh,
+    connection.verkey,
+    Buffer.from(JSON.stringify(connectionResponse.connection), 'utf8')
+  );
+
+  const signedConnectionResponse = {
+    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
+    '@id': '12345678900987654321',
+    '~thread': {
+      thid: message['@id'],
+    },
+    'connection~sig': {
+      '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/signature/1.0/ed25519Sha512_single',
+      signature: signatureBuffer.toString('base64'),
+      sig_data: Buffer.from(JSON.stringify(connectionResponse.connection), 'utf8').toString('base64'),
+      signers: connection.verkey,
+    },
+  };
+
+  const outboundMessage = {
+    endpoint: 'TODO',
+    payload: signedConnectionResponse,
+    recipientKeys: [connection.theirKey],
+    routingKeys: [],
+    senderVk: connection.verkey,
+  };
+
+  return outboundMessage;
+}
+
+export async function handleConnectionResponse(unpackedMessage: InboundMessage) {
+  const { message, recipient_verkey, sender_verkey } = unpackedMessage;
+
+  if (!message['connection~sig']) {
+    throw new Error('Invalid message');
+  }
+
+  const connectionSignature = message['connection~sig'];
+  const signerVerkey = connectionSignature.signers;
+  const data = Buffer.from(connectionSignature.sig_data, 'base64');
+  const signature = Buffer.from(connectionSignature.signature, 'base64');
+
+  // check signature
+  const valid = await indy.cryptoVerify(signerVerkey, data, signature);
+
+  const connectionReponse = JSON.parse(data.toString('utf8'));
+
+  if (!valid) {
+    throw new Error('Signature is not valid!');
+  }
+
+  const connection = findByVerkey(recipient_verkey);
+
+  if (!connection) {
+    throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+  }
+
+  connection.theirDid = connectionReponse.did;
+  connection.theirKey = connectionReponse.did_doc.service[0].recipientKeys[0];
+
+  const response = {
+    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack',
+    '@id': '12345678900987654321',
+    status: 'OK',
+    '~thread': {
+      thid: message['@id'],
+    },
+  };
+
+  const outboundMessage = {
+    endpoint: 'TODO',
+    payload: response,
+    recipientKeys: [sender_verkey],
+    routingKeys: [],
+    senderVk: connection.verkey,
+  };
+  return outboundMessage;
+}
+
+export function getConnections() {
+  return connections;
+}
+
+function findByVerkey(verkey: Verkey) {
+  return connections.find(connection => connection.verkey === verkey);
+}
+
+async function pack(outboundMessage: OutboundMessage): Promise<JsonWebKey> {
+  const { payload, recipientKeys, senderVk } = outboundMessage;
+  const messageRaw = Buffer.from(JSON.stringify(payload), 'utf-8');
+  const packedMessage = await indy.packMessage(wh, messageRaw, recipientKeys, senderVk);
+  return packedMessage;
+}
+
+async function unpack(messagePackage: JsonWebKey): Promise<InboundMessage> {
+  const unpackedMessageBuffer = await indy.unpackMessage(wh, Buffer.from(JSON.stringify(messagePackage), 'utf-8'));
+  const unpackedMessage = JSON.parse(unpackedMessageBuffer.toString('utf8'));
+  return {
+    ...unpackedMessage,
+    message: JSON.parse(unpackedMessage.message),
+  };
+}
