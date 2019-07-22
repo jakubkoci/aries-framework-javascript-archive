@@ -1,49 +1,32 @@
 import indy from 'indy-sdk';
-import fetch from 'node-fetch';
+import { sign } from './decorators';
+import { Connection, OutboundMessage, ConnectionState, InboundMessage } from './types';
 
 const config = {
   label: 'Alice or Bob',
   seed: '000000000000000000000000Steward1',
 };
 
-enum ConnectionState {
-  INIT,
-  INVITED,
-  REQUESTED,
-  RESPONDED,
-}
-
-interface Connection {
-  did: Did;
-  verkey: Verkey;
-  theirDid?: Did;
-  theirKey?: Verkey;
-  invitation?: {};
-  state: ConnectionState;
-}
-
-interface Message {
-  '@id': string;
-  '@type': string;
-  [key: string]: any;
-}
-
-interface InboundMessage {
-  message: Message;
-  sender_verkey: Verkey; // TODO make it optional
-  recipient_verkey: Verkey; // TODO make it optional
-}
-
-interface OutboundMessage {
-  endpoint: string;
-  payload: Message;
-  recipientKeys: Verkey[];
-  routingKeys: Verkey[];
-  senderVk: Verkey | null;
-}
-
 let wh: number;
 const connections: Connection[] = [];
+
+export async function init() {
+  const walletConfig = { id: 'wallet-1' };
+  const walletCredentials = { key: 'key' };
+
+  try {
+    await indy.createWallet(walletConfig, walletCredentials);
+  } catch (error) {
+    if (error.indyName && error.indyName === 'WalletAlreadyExistsError') {
+      console.log(error.indyName);
+    } else {
+      throw error;
+    }
+  }
+
+  wh = await indy.openWallet(walletConfig, walletCredentials);
+  console.log(`Wallet opened with handle: ${wh}`);
+}
 
 export async function processMessage(inboundPackedMessage: any) {
   let inboundMessage;
@@ -80,24 +63,6 @@ export async function dispatch(unpackedMessage: any): Promise<OutboundMessage> {
     default:
       throw new Error('No handler for message found');
   }
-}
-
-export async function init() {
-  const walletConfig = { id: 'wallet-1' };
-  const walletCredentials = { key: 'key' };
-
-  try {
-    await indy.createWallet(walletConfig, walletCredentials);
-  } catch (error) {
-    if (error.indyName && error.indyName === 'WalletAlreadyExistsError') {
-      console.log(error.indyName);
-    } else {
-      throw error;
-    }
-  }
-
-  wh = await indy.openWallet(walletConfig, walletCredentials);
-  console.log(`Wallet opened with handle: ${wh}`);
 }
 
 export async function createConnection(): Promise<Connection> {
@@ -187,6 +152,11 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage) {
   }
 
   const connectionResponse = {
+    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
+    '@id': '12345678900987654321',
+    '~thread': {
+      thid: message['@id'],
+    },
     connection: {
       did: connection.did,
       did_doc: {
@@ -205,25 +175,7 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage) {
     },
   };
 
-  const signatureBuffer = await indy.cryptoSign(
-    wh,
-    connection.verkey,
-    Buffer.from(JSON.stringify(connectionResponse.connection), 'utf8')
-  );
-
-  const signedConnectionResponse = {
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
-    '@id': '12345678900987654321',
-    '~thread': {
-      thid: message['@id'],
-    },
-    'connection~sig': {
-      '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/signature/1.0/ed25519Sha512_single',
-      signature: signatureBuffer.toString('base64'),
-      sig_data: Buffer.from(JSON.stringify(connectionResponse.connection), 'utf8').toString('base64'),
-      signers: connection.verkey,
-    },
-  };
+  const signedConnectionResponse = await sign(wh, connectionResponse, 'connection', connection.verkey);
 
   const outboundMessage = {
     endpoint: 'TODO',
