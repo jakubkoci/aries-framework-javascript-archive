@@ -1,18 +1,14 @@
 import indy from 'indy-sdk';
+import config from './config';
 import { sign } from './decorators';
 import { Connection, OutboundMessage, ConnectionState, InboundMessage } from './types';
-
-const config = {
-  label: 'Alice or Bob',
-  seed: '000000000000000000000000Steward1',
-};
 
 let wh: number;
 const connections: Connection[] = [];
 
 export async function init() {
-  const walletConfig = { id: 'wallet-1' };
-  const walletCredentials = { key: 'key' };
+  const walletConfig = { id: config.walletId };
+  const walletCredentials = { key: config.walletSeed };
 
   try {
     await indy.createWallet(walletConfig, walletCredentials);
