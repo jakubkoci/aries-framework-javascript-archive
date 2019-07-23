@@ -12,6 +12,8 @@ export interface Connection {
   theirKey?: Verkey;
   invitation?: {};
   state: ConnectionState;
+  endpoint?: string;
+  messages: Message[];
 }
 
 export interface Message {

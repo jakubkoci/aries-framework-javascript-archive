@@ -10,7 +10,7 @@ declare module 'indy-sdk' {
     message: Buffer,
     receiverKeys: Verkey[],
     senderVk: Verkey | null
-  ): Promise<JsonWebKey>;
+  ): Promise<Buffer>;
   function unpackMessage(wh: WalletHandle, jwe: Buffer): Promise<Buffer>;
 }
 

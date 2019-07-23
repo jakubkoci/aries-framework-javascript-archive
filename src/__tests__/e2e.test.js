@@ -1,5 +1,5 @@
 /* eslint-disable */
-const fetch = require('node-fetch');
+const { get, post } = require('../http');
 
 test('make a connection', async () => {
   const invitation = await get('http://localhost:3001/invitation');
@@ -24,12 +24,27 @@ test('make a connection', async () => {
   expect(bobConnections[0].verkey).toBe(aliceConnections[0].theirKey);
 });
 
-async function get(url) {
-  const response = await fetch(url);
-  return response.text();
-}
+test('send a message to connection', async () => {
+  const aliceConnectionsResponse = await get('http://localhost:3001/connections');
+  console.log(aliceConnectionsResponse);
 
-async function post(url, body) {
-  const response = await fetch(url, { method: 'POST', body });
-  return response.text();
-}
+  const bobConnectionsResponse = await get('http://localhost:3002/connections');
+  console.log(bobConnectionsResponse);
+
+  const aliceConnections = JSON.parse(aliceConnectionsResponse);
+  const bobConnections = JSON.parse(bobConnectionsResponse);
+
+  // send message from Alice to Bob
+  const aliceVerkeyAtAliceBob = aliceConnections[0].verkey;
+  const message = 'hello, world';
+  await post(`http://localhost:3001/api/connections/${aliceVerkeyAtAliceBob}/send-message`, message);
+
+  const bobVerkeyAtAliceBob = bobConnections[0].verkey;
+  const bobMessagesResponse = await get(
+    `http://localhost:3002/api/connections/${bobVerkeyAtAliceBob}/messages`,
+    message
+  );
+  const bobMessages = JSON.parse(bobMessagesResponse);
+  console.log(bobMessages);
+  expect(bobMessages[0].content).toBe(message);
+});

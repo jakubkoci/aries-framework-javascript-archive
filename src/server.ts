@@ -35,13 +35,24 @@ app.post('/msg', async (req, res) => {
   const message = req.body;
   const packedMessage = JSON.parse(message);
   const outboundMessage = await service.processMessage(packedMessage);
-  console.log(outboundMessage);
   res.send(outboundMessage);
 });
 
 app.get('/connections', async (req, res) => {
   const connections = JSON.stringify(service.getConnections(), null, 2);
   res.send(connections);
+});
+
+app.post('/api/connections/:verkey/send-message', async (req, res) => {
+  const message = req.body;
+  await service.sendMessage(req.params.verkey, message);
+  res.status(200).end();
+});
+
+app.get('/api/connections/:verkey/messages', async (req, res) => {
+  const verkey = req.params.verkey;
+  const messages = JSON.stringify(service.getMessages(verkey), null, 2);
+  res.send(messages);
 });
 
 app.listen(PORT, async () => {

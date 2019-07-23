@@ -6,4 +6,5 @@ export default {
   label: process.env.WALLET_LABEL,
   walletId: process.env.WALLET_ID,
   walletSeed: process.env.WALLET_SEED,
+  url: 'http://localhost',
 };
