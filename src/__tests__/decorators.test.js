@@ -47,8 +47,6 @@ describe('decorators', () => {
 
     const signedMessage = await sign(wh, message, 'connection', verkey);
 
-    console.log('signedMessage', signedMessage);
-
     const expectedMessage = {
       '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
       '@id': '12345678900987654321',

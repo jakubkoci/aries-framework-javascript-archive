@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import config from './config';
+import logger from './logger';
 import * as service from './service';
 
 const PORT = config.port;
@@ -25,9 +26,7 @@ app.post('/invitation', async (req, res) => {
   const message = req.body;
   const [, encodedInvitation] = message.split('c_i=');
   const invitation = JSON.parse(Buffer.from(encodedInvitation, 'base64').toString());
-  console.log(JSON.stringify(invitation, null, 2));
   const outboundMessage = await service.processMessage(invitation);
-  console.log(outboundMessage);
   res.send(outboundMessage);
 });
 
@@ -57,5 +56,5 @@ app.get('/api/connections/:verkey/messages', async (req, res) => {
 
 app.listen(PORT, async () => {
   await service.init();
-  console.log(`Application started on port ${PORT}`);
+  logger.log(`Application started on port ${PORT}`);
 });

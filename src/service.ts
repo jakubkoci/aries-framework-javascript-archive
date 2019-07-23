@@ -1,4 +1,5 @@
 import indy from 'indy-sdk';
+import logger from './logger';
 import { post } from './http';
 import config from './config';
 import { sign } from './decorators';
@@ -15,14 +16,14 @@ export async function init() {
     await indy.createWallet(walletConfig, walletCredentials);
   } catch (error) {
     if (error.indyName && error.indyName === 'WalletAlreadyExistsError') {
-      console.log(error.indyName);
+      logger.log(error.indyName);
     } else {
       throw error;
     }
   }
 
   wh = await indy.openWallet(walletConfig, walletCredentials);
-  console.log(`Wallet opened with handle: ${wh}`);
+  logger.log(`Wallet opened with handle: ${wh}`);
 }
 
 export async function processMessage(inboundPackedMessage: any) {
@@ -34,9 +35,9 @@ export async function processMessage(inboundPackedMessage: any) {
     inboundMessage = { message: inboundPackedMessage };
   }
 
-  console.log('inboundMessage', inboundMessage);
+  logger.logJson('inboundMessage', inboundMessage);
   const outboundMessage = await dispatch(inboundMessage);
-  console.log('outboundMessage', outboundMessage);
+  logger.logJson('outboundMessage', outboundMessage);
 
   const outboundPackedMessage = await pack(outboundMessage);
   return outboundPackedMessage;
@@ -302,7 +303,7 @@ export async function sendMessage(verkey: Verkey, message: string) {
     throw new Error(`Connection for verkey ${verkey} not found!`);
   }
   const outboundMessage = await sendMessageToConnection(connection, message);
-  console.log('outboundMessage', outboundMessage);
+  logger.logJson('outboundMessage', outboundMessage);
 
   const outboundPackedMessage = await pack(outboundMessage);
 

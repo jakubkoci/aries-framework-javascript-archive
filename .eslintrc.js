@@ -12,5 +12,6 @@ module.exports = {
     // Aries protocol defines attributes with snake case.
     '@typescript-eslint/camelcase': 'off',
     '@typescript-eslint/no-use-before-define': ['error', { functions: false, classes: false, variables: true }],
+    'no-console': 'error',
   },
 };
