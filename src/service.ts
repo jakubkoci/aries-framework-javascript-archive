@@ -68,17 +68,7 @@ export async function dispatch(inboundMessage: any): Promise<OutboundMessage> {
   }
 }
 
-export async function createConnection(): Promise<Connection> {
-  const [did, verkey] = await indy.createAndStoreMyDid(wh, {});
-  return {
-    did,
-    verkey,
-    state: ConnectionState.INIT,
-    messages: [],
-  };
-}
-
-export async function createInvitation() {
+export async function createConnectionWithInvitation() {
   const connection = await createConnection();
   const { verkey } = connection;
   const invitation = {
@@ -105,19 +95,7 @@ export async function handleInvitation(inboundMessage: InboundMessage) {
     label: config.label,
     connection: {
       did: connection.did,
-      did_doc: {
-        '@context': 'https://w3id.org/did/v1',
-        service: [
-          {
-            id: 'did:example:123456789abcdefghi#did-communication',
-            type: 'did-communication',
-            priority: 0,
-            recipientKeys: [connection.verkey],
-            routingKeys: [],
-            serviceEndpoint: `${config.url}:${config.port}/msg`,
-          },
-        ],
-      },
+      did_doc: connection.didDoc,
     },
   };
 
@@ -164,19 +142,7 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage) {
     },
     connection: {
       did: connection.did,
-      did_doc: {
-        '@context': 'https://w3id.org/did/v1',
-        service: [
-          {
-            id: 'did:example:123456789abcdefghi#did-communication',
-            type: 'did-communication',
-            priority: 0,
-            recipientKeys: [connection.verkey],
-            routingKeys: [],
-            serviceEndpoint: `${config.url}:${config.port}/msg`,
-          },
-        ],
-      },
+      did_doc: connection.didDoc,
     },
   };
 
@@ -312,6 +278,30 @@ export async function sendMessage(verkey: Verkey, message: string) {
 
 function findByVerkey(verkey: Verkey) {
   return connections.find(connection => connection.verkey === verkey);
+}
+
+async function createConnection(): Promise<Connection> {
+  const [did, verkey] = await indy.createAndStoreMyDid(wh, {});
+  const did_doc = {
+    '@context': 'https://w3id.org/did/v1',
+    service: [
+      {
+        id: 'did:example:123456789abcdefghi#did-communication',
+        type: 'did-communication',
+        priority: 0,
+        recipientKeys: [verkey],
+        routingKeys: [],
+        serviceEndpoint: `${config.url}:${config.port}/msg`,
+      },
+    ],
+  };
+  return {
+    did,
+    didDoc: did_doc,
+    verkey,
+    state: ConnectionState.INIT,
+    messages: [],
+  };
 }
 
 async function sendMessageToConnection(connection: Connection, message: string): Promise<OutboundMessage> {

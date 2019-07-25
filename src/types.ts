@@ -7,6 +7,7 @@ export enum ConnectionState {
 
 export interface Connection {
   did: Did;
+  didDoc: DidDoc;
   verkey: Verkey;
   theirDid?: Did;
   theirKey?: Verkey;
@@ -14,6 +15,10 @@ export interface Connection {
   state: ConnectionState;
   endpoint?: string;
   messages: Message[];
+}
+
+export interface DidDoc {
+  '@context': string;
 }
 
 export interface Message {

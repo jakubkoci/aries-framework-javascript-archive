@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
 
 // Create new invitation as inviter to invitee
 app.get('/invitation', async (req, res) => {
-  const { invitation } = await service.createInvitation();
+  const { invitation } = await service.createConnectionWithInvitation();
   const encodedInvitation = Buffer.from(JSON.stringify(invitation)).toString('base64');
   const invitationUrl = `https://example.com/ssi?c_i=${encodedInvitation}`;
   res.send(invitationUrl);
