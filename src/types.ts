@@ -3,6 +3,7 @@ export enum ConnectionState {
   INVITED,
   REQUESTED,
   RESPONDED,
+  COMPLETE,
 }
 
 export interface Connection {

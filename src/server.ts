@@ -26,15 +26,15 @@ app.post('/invitation', async (req, res) => {
   const message = req.body;
   const [, encodedInvitation] = message.split('c_i=');
   const invitation = JSON.parse(Buffer.from(encodedInvitation, 'base64').toString());
-  const outboundMessage = await service.processMessage(invitation);
-  res.send(outboundMessage);
+  await service.processMessage(invitation);
+  res.status(200).end();
 });
 
 app.post('/msg', async (req, res) => {
   const message = req.body;
   const packedMessage = JSON.parse(message);
-  const outboundMessage = await service.processMessage(packedMessage);
-  res.send(outboundMessage);
+  await service.processMessage(packedMessage);
+  res.status(200).end();
 });
 
 app.get('/connections', async (req, res) => {

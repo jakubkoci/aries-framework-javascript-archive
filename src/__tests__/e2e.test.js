@@ -3,9 +3,13 @@ const { get, post } = require('../http');
 
 test('make a connection', async () => {
   const invitation = await get('http://localhost:3001/invitation');
-  const connectinRequest = await post('http://localhost:3002/invitation', invitation);
-  const connectionResponse = await post('http://localhost:3001/msg', connectinRequest);
-  const ack = await post('http://localhost:3002/msg', connectionResponse);
+  const response = await post('http://localhost:3002/invitation', invitation);
+  const responseText = await console.log(response);
+
+  // TODO Poll connections instead of wait
+  // Poll connection by Alice -> Bob invitation's verkey post(`http://localhost:3001/api/connections/${aliceVerkeyAtAliceBob}`, message);
+  // Poll connection by Alice -> Bob connection's theirKey post(`http://localhost:3002/api/connections/${aliceVerkeyAtAliceBob}`, message);
+  await wait(2000);
 
   const aliceConnectionsResponse = await get('http://localhost:3001/connections');
   console.log(aliceConnectionsResponse);
@@ -48,3 +52,10 @@ test('send a message to connection', async () => {
   console.log(bobMessages);
   expect(bobMessages[0].content).toBe(message);
 });
+
+function wait(ms = 1000) {
+  return new Promise(resolve => {
+    console.log(`waiting ${ms} ms...`);
+    setTimeout(resolve, ms);
+  });
+}

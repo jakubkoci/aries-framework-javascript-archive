@@ -39,16 +39,13 @@ export async function processMessage(inboundPackedMessage: any) {
   const outboundMessage = await dispatch(inboundMessage);
   logger.logJson('outboundMessage', outboundMessage);
 
-  const outboundPackedMessage = await pack(outboundMessage);
-  return outboundPackedMessage;
-
-  // TODO
-  // send message and update connection state
-  // fetch(outboundMessage.endpoint, { method: 'POST', body: JSON.stringify(outboundPackedMessage) });
-  // connection.state = ConnectionState.XXX;
+  if (outboundMessage) {
+    const outboundPackedMessage = await pack(outboundMessage);
+    await post(outboundMessage.endpoint, JSON.stringify(outboundPackedMessage));
+  }
 }
 
-export async function dispatch(inboundMessage: any): Promise<OutboundMessage> {
+export async function dispatch(inboundMessage: any): Promise<OutboundMessage | null> {
   const messageType = inboundMessage.message['@type'];
   switch (messageType) {
     case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation': {
@@ -63,6 +60,9 @@ export async function dispatch(inboundMessage: any): Promise<OutboundMessage> {
     case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message': {
       return handleBasicMessage(inboundMessage);
     }
+    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack': {
+      return handleAckMessage(inboundMessage);
+    }
     default:
       throw new Error('No handler for message found');
   }
@@ -76,7 +76,7 @@ export async function createConnectionWithInvitation() {
     '@id': '12345678900987654321',
     label: config.label,
     recipientKeys: [verkey],
-    serviceEndpoint: 'https://localhost:8080/msg',
+    serviceEndpoint: `${config.url}:${config.port}/msg`,
     routingKeys: [],
   };
 
@@ -99,6 +99,7 @@ export async function handleInvitation(inboundMessage: InboundMessage) {
     },
   };
 
+  connection.state = ConnectionState.REQUESTED;
   connections.push(connection);
 
   const outboundMessage = {
@@ -151,6 +152,8 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage) {
   if (!connection.endpoint) {
     throw new Error('Invalid connection endpoint');
   }
+
+  connection.state = ConnectionState.RESPONDED;
 
   const outboundMessage = {
     endpoint: connection.endpoint,
@@ -207,6 +210,8 @@ export async function handleConnectionResponse(unpackedMessage: InboundMessage) 
     throw new Error('Invalid connection endpoint');
   }
 
+  connection.state = ConnectionState.COMPLETE;
+
   const outboundMessage = {
     endpoint: connection.endpoint,
     payload: response,
@@ -249,6 +254,21 @@ async function handleBasicMessage(inboundMessage: InboundMessage) {
   };
 
   return outboundMessage;
+}
+
+async function handleAckMessage(inboundMessage: InboundMessage) {
+  const { message, recipient_verkey, sender_verkey } = inboundMessage;
+  const connection = findByVerkey(recipient_verkey);
+
+  if (!connection) {
+    throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+  }
+
+  if (connection.state !== ConnectionState.COMPLETE) {
+    connection.state = ConnectionState.COMPLETE;
+  }
+
+  return null;
 }
 
 export function getConnections() {
