@@ -6,6 +6,10 @@ import { sign } from './decorators';
 import { Connection, OutboundMessage, ConnectionState, InboundMessage } from './types';
 
 let wh: number;
+let configAsAgency: {
+  did?: Did;
+  verkey?: Verkey;
+} = {};
 const connections: Connection[] = [];
 
 export async function init() {
@@ -24,6 +28,16 @@ export async function init() {
 
   wh = await indy.openWallet(walletConfig, walletCredentials);
   logger.log(`Wallet opened with handle: ${wh}`);
+
+  if (config.isAgency) {
+    const [did, verkey] = await indy.createAndStoreMyDid(wh, { seed: '0000000000000000000000000Forward' });
+    configAsAgency.did = did;
+    configAsAgency.verkey = verkey;
+  }
+}
+
+export function getConfigAsAgency() {
+  return configAsAgency;
 }
 
 export async function processMessage(inboundPackedMessage: any) {

@@ -10,7 +10,7 @@ const app = express();
 app.use(bodyParser.text());
 
 app.get('/', (req, res) => {
-  res.send('Hello World');
+  res.json(config);
 });
 
 // Create new invitation as inviter to invitee
@@ -52,6 +52,11 @@ app.get('/api/connections/:verkey/messages', async (req, res) => {
   const verkey = req.params.verkey;
   const messages = JSON.stringify(service.getMessages(verkey), null, 2);
   res.send(messages);
+});
+
+app.get('/agency', async (req, res) => {
+  const agencyInfo = service.getConfigAsAgency();
+  res.json(agencyInfo);
 });
 
 app.listen(PORT, async () => {
