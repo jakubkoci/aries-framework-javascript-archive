@@ -26,14 +26,14 @@ app.post('/invitation', async (req, res) => {
   const message = req.body;
   const [, encodedInvitation] = message.split('c_i=');
   const invitation = JSON.parse(Buffer.from(encodedInvitation, 'base64').toString());
-  await service.processMessage(invitation);
+  await service.recieveMessage(invitation);
   res.status(200).end();
 });
 
 app.post('/msg', async (req, res) => {
   const message = req.body;
   const packedMessage = JSON.parse(message);
-  await service.processMessage(packedMessage);
+  await service.recieveMessage(packedMessage);
   res.status(200).end();
 });
 
@@ -43,8 +43,14 @@ app.get('/connections', async (req, res) => {
 });
 
 app.post('/api/connections/:verkey/send-message', async (req, res) => {
-  const message = req.body;
-  await service.sendMessage(req.params.verkey, message);
+  const verkey = req.params.verkey;
+  const content = req.body;
+  const connection = service.findByVerkey(verkey);
+  if (!connection) {
+    throw new Error(`Connection for verkey ${verkey} not found!`);
+  }
+  const outboundMessage = await service.createBasicMessage(connection, content);
+  await service.sendMessage(outboundMessage);
   res.status(200).end();
 });
 

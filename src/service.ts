@@ -40,7 +40,7 @@ export function getConfigAsAgency() {
   return configAsAgency;
 }
 
-export async function processMessage(inboundPackedMessage: any) {
+export async function recieveMessage(inboundPackedMessage: any) {
   let inboundMessage;
 
   if (!inboundPackedMessage['@type']) {
@@ -54,32 +54,31 @@ export async function processMessage(inboundPackedMessage: any) {
   logger.logJson('outboundMessage', outboundMessage);
 
   if (outboundMessage) {
-    const outboundPackedMessage = await pack(outboundMessage);
-    await post(outboundMessage.endpoint, JSON.stringify(outboundPackedMessage));
+    sendMessage(outboundMessage);
   }
 }
 
+interface Handlers {
+  [key: string]: (inboudMessage: InboundMessage) => Promise<OutboundMessage | null>;
+}
+
 export async function dispatch(inboundMessage: any): Promise<OutboundMessage | null> {
-  const messageType = inboundMessage.message['@type'];
-  switch (messageType) {
-    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation': {
-      return handleInvitation(inboundMessage);
-    }
-    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request': {
-      return handleConnectionRequest(inboundMessage);
-    }
-    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response': {
-      return handleConnectionResponse(inboundMessage);
-    }
-    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message': {
-      return handleBasicMessage(inboundMessage);
-    }
-    case 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack': {
-      return handleAckMessage(inboundMessage);
-    }
-    default:
-      throw new Error('No handler for message found');
+  const messageType: string = inboundMessage.message['@type'];
+  const handlers: Handlers = {
+    'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation': handleInvitation,
+    'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request': handleConnectionRequest,
+    'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response': handleConnectionResponse,
+    'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack': handleAckMessage,
+    'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message': handleBasicMessage,
+  };
+
+  const handler = handlers[messageType];
+
+  if (!handler) {
+    throw new Error('No handler for message found');
   }
+
+  return handler(inboundMessage);
 }
 
 export async function createConnectionWithInvitation() {
@@ -297,21 +296,38 @@ export function getMessages(verkey: Verkey) {
   return connection.messages;
 }
 
-export async function sendMessage(verkey: Verkey, message: string) {
-  const connection = findByVerkey(verkey);
-  if (!connection) {
-    throw new Error(`Connection for verkey ${verkey} not found!`);
-  }
-  const outboundMessage = await sendMessageToConnection(connection, message);
+export async function sendMessage(outboundMessage: OutboundMessage) {
   logger.logJson('outboundMessage', outboundMessage);
-
   const outboundPackedMessage = await pack(outboundMessage);
-
   await post(outboundMessage.endpoint, JSON.stringify(outboundPackedMessage));
 }
 
-function findByVerkey(verkey: Verkey) {
+export function findByVerkey(verkey: Verkey) {
   return connections.find(connection => connection.verkey === verkey);
+}
+
+export function createBasicMessage(connection: Connection, content: string) {
+  const basicMessage = {
+    '@id': '123456780',
+    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message',
+    '~l10n': { locale: 'en' },
+    sent_time: new Date().toISOString(),
+    content,
+  };
+
+  if (!connection.endpoint || !connection.theirKey) {
+    throw new Error('Invalid connection endpoint');
+  }
+
+  const outboundMessage = {
+    endpoint: connection.endpoint,
+    payload: basicMessage,
+    recipientKeys: [connection.theirKey],
+    routingKeys: [],
+    senderVk: connection.verkey,
+  };
+
+  return outboundMessage;
 }
 
 async function createConnection(): Promise<Connection> {
@@ -336,30 +352,6 @@ async function createConnection(): Promise<Connection> {
     state: ConnectionState.INIT,
     messages: [],
   };
-}
-
-async function sendMessageToConnection(connection: Connection, message: string): Promise<OutboundMessage> {
-  const basicMessage = {
-    '@id': '123456780',
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message',
-    '~l10n': { locale: 'en' },
-    sent_time: new Date().toISOString(),
-    content: message,
-  };
-
-  if (!connection.endpoint || !connection.theirKey) {
-    throw new Error('Invalid connection endpoint');
-  }
-
-  const outboundMessage = {
-    endpoint: connection.endpoint,
-    payload: basicMessage,
-    recipientKeys: [connection.theirKey],
-    routingKeys: [],
-    senderVk: connection.verkey,
-  };
-
-  return outboundMessage;
 }
 
 async function pack(outboundMessage: OutboundMessage): Promise<JsonWebKey> {
