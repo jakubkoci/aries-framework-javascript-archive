@@ -2,30 +2,31 @@
 const { get, post } = require('../http');
 
 test('make a connection', async () => {
-  const invitation = await get('http://localhost:3001/invitation');
-  const response = await post('http://localhost:3002/invitation', invitation);
-  const responseText = await console.log(response);
+  const invitationUrl = await get('http://localhost:3001/invitation');
+  await post('http://localhost:3002/invitation', invitationUrl);
 
-  // TODO Poll connections instead of wait
-  // Poll connection by Alice -> Bob invitation's verkey post(`http://localhost:3001/api/connections/${aliceVerkeyAtAliceBob}`, message);
-  // Poll connection by Alice -> Bob connection's theirKey post(`http://localhost:3002/api/connections/${aliceVerkeyAtAliceBob}`, message);
-  await wait(2000);
+  const [, encodedInvitation] = invitationUrl.split('c_i=');
+  const invitation = JSON.parse(Buffer.from(encodedInvitation, 'base64').toString());
+  const aliceKeyAtAliceBob = invitation.recipientKeys[0];
 
-  const aliceConnectionsResponse = await get('http://localhost:3001/connections');
-  console.log(aliceConnectionsResponse);
+  const aliceConnectionAtAliceBob = await poll(
+    () => getConnection(`http://localhost:3001/api/connections/${aliceKeyAtAliceBob}`),
+    res => res.state !== 4,
+    200
+  );
+  console.log('aliceConnectionAtAliceBob\n', aliceConnectionAtAliceBob);
 
-  const bobConnectionsResponse = await get('http://localhost:3002/connections');
-  console.log(bobConnectionsResponse);
+  const bobConnectionAtAliceBob = await poll(
+    () => getConnection(`http://localhost:3002/api/connections/${aliceConnectionAtAliceBob.theirKey}`),
+    res => res.state !== 4,
+    200
+  );
+  console.log('bobConnectionAtAliceBob\n', bobConnectionAtAliceBob);
 
-  const aliceConnections = JSON.parse(aliceConnectionsResponse);
-  const bobConnections = JSON.parse(bobConnectionsResponse);
-
-  expect(aliceConnections.length).toBe(1);
-  expect(bobConnections.length).toBe(1);
-  expect(aliceConnections[0].did).toBe(bobConnections[0].theirDid);
-  expect(aliceConnections[0].verkey).toBe(bobConnections[0].theirKey);
-  expect(bobConnections[0].did).toBe(aliceConnections[0].theirDid);
-  expect(bobConnections[0].verkey).toBe(aliceConnections[0].theirKey);
+  expect(aliceConnectionAtAliceBob.did).toBe(bobConnectionAtAliceBob.theirDid);
+  expect(aliceConnectionAtAliceBob.verkey).toBe(bobConnectionAtAliceBob.theirKey);
+  expect(bobConnectionAtAliceBob.did).toBe(aliceConnectionAtAliceBob.theirDid);
+  expect(bobConnectionAtAliceBob.verkey).toBe(aliceConnectionAtAliceBob.theirKey);
 });
 
 test('send a message to connection', async () => {
@@ -52,6 +53,20 @@ test('send a message to connection', async () => {
   console.log(bobMessages);
   expect(bobMessages[0].content).toBe(message);
 });
+
+async function getConnection(url) {
+  const response = await get(url);
+  return JSON.parse(response || "{}");
+}
+
+async function poll(fn, fnCondition, ms) {
+  let result = await fn();
+  while (fnCondition(result)) {
+    await wait(ms);
+    result = await fn();
+  }
+  return result;
+}
 
 function wait(ms = 1000) {
   return new Promise(resolve => {

@@ -54,6 +54,12 @@ app.post('/api/connections/:verkey/send-message', async (req, res) => {
   res.status(200).end();
 });
 
+app.get('/api/connections/:verkey', async (req, res) => {
+  const verkey = req.params.verkey;
+  const connection = JSON.stringify(service.findByVerkey(verkey));
+  res.send(connection);
+});
+
 app.get('/api/connections/:verkey/messages', async (req, res) => {
   const verkey = req.params.verkey;
   const messages = JSON.stringify(service.getMessages(verkey), null, 2);
