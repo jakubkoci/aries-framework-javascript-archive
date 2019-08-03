@@ -7,5 +7,5 @@ export default {
   walletId: process.env.WALLET_ID,
   walletSeed: process.env.WALLET_SEED,
   url: 'http://localhost',
-  isAgency: process.env.AGENCY && process.env.AGENCY === 'true',
+  agencyUrl: process.env.AGENCY_URL || null,
 };

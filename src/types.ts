@@ -12,10 +12,15 @@ export interface Connection {
   verkey: Verkey;
   theirDid?: Did;
   theirKey?: Verkey;
-  invitation?: {};
+  invitation?: ConnectionInvitation;
   state: ConnectionState;
   endpoint?: string;
-  messages: Message[];
+  messages: any[];
+}
+
+export interface ConnectionInvitation {
+  serviceEndpoint: string;
+  recipientKeys: string[];
 }
 
 export interface DidDoc {
@@ -35,6 +40,7 @@ export interface InboundMessage {
 }
 
 export interface OutboundMessage {
+  connection: Connection;
   endpoint: string;
   payload: Message;
   recipientKeys: Verkey[];

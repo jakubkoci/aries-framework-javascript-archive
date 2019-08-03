@@ -1,12 +1,13 @@
 /* eslint-disable */
 const { get, post } = require('../http');
+const { parseInvitationUrl } = require('../helpers');
+const { poll } = require('../polling');
 
 test('make a connection', async () => {
   const invitationUrl = await get('http://localhost:3001/invitation');
   await post('http://localhost:3002/invitation', invitationUrl);
 
-  const [, encodedInvitation] = invitationUrl.split('c_i=');
-  const invitation = JSON.parse(Buffer.from(encodedInvitation, 'base64').toString());
+  const invitation = parseInvitationUrl(invitationUrl);
   const aliceKeyAtAliceBob = invitation.recipientKeys[0];
 
   const aliceConnectionAtAliceBob = await poll(
@@ -45,10 +46,7 @@ test('send a message to connection', async () => {
   await post(`http://localhost:3001/api/connections/${aliceVerkeyAtAliceBob}/send-message`, message);
 
   const bobVerkeyAtAliceBob = bobConnections[0].verkey;
-  const bobMessagesResponse = await get(
-    `http://localhost:3002/api/connections/${bobVerkeyAtAliceBob}/messages`,
-    message
-  );
+  const bobMessagesResponse = await get(`http://localhost:3002/api/connections/${bobVerkeyAtAliceBob}/messages`);
   const bobMessages = JSON.parse(bobMessagesResponse);
   console.log(bobMessages);
   expect(bobMessages[0].content).toBe(message);
@@ -56,21 +54,5 @@ test('send a message to connection', async () => {
 
 async function getConnection(url) {
   const response = await get(url);
-  return JSON.parse(response || "{}");
-}
-
-async function poll(fn, fnCondition, ms) {
-  let result = await fn();
-  while (fnCondition(result)) {
-    await wait(ms);
-    result = await fn();
-  }
-  return result;
-}
-
-function wait(ms = 1000) {
-  return new Promise(resolve => {
-    console.log(`waiting ${ms} ms...`);
-    setTimeout(resolve, ms);
-  });
+  return JSON.parse(response || '{}');
 }

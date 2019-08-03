@@ -1,9 +1,9 @@
 import indy from 'indy-sdk';
 import logger from './logger';
-import { post } from './http';
+import { post, get } from './http';
 import config from './config';
 import { sign } from './decorators';
-import { Connection, OutboundMessage, ConnectionState, InboundMessage } from './types';
+import { Connection, OutboundMessage, ConnectionState, InboundMessage, ConnectionInvitation } from './types';
 
 let wh: number;
 let configAsAgency: {
@@ -11,6 +11,7 @@ let configAsAgency: {
   verkey?: Verkey;
 } = {};
 const connections: Connection[] = [];
+let inboundConnection: Connection;
 
 export async function init() {
   const walletConfig = { id: config.walletId };
@@ -29,18 +30,37 @@ export async function init() {
   wh = await indy.openWallet(walletConfig, walletCredentials);
   logger.log(`Wallet opened with handle: ${wh}`);
 
-  if (config.isAgency) {
-    const [did, verkey] = await indy.createAndStoreMyDid(wh, { seed: '0000000000000000000000000Forward' });
-    configAsAgency.did = did;
-    configAsAgency.verkey = verkey;
+  if (isAgency()) {
+    console.log('Agency init...');
+    try {
+      const [did, verkey] = await indy.createAndStoreMyDid(wh, { seed: '0000000000000000000000000Forward' });
+      configAsAgency.did = did;
+      configAsAgency.verkey = verkey;
+    } catch (error) {
+      if (error.indyName && error.indyName === 'DidAlreadyExistsError') {
+        logger.log(error.indyName);
+      } else {
+        throw error;
+      }
+    }
   }
+}
+
+export function isAgency() {
+  return !config.agencyUrl;
+}
+
+export async function registerAgency(invitation: ConnectionInvitation) {
+  inboundConnection = await createConnection();
+  const connectionRequestMessage = createConnectionRequestMessage(inboundConnection, invitation);
+  await sendMessage(connectionRequestMessage);
 }
 
 export function getConfigAsAgency() {
   return configAsAgency;
 }
 
-export async function recieveMessage(inboundPackedMessage: any) {
+export async function receiveMessage(inboundPackedMessage: any) {
   let inboundMessage;
 
   if (!inboundPackedMessage['@type']) {
@@ -95,13 +115,21 @@ export async function createConnectionWithInvitation() {
 
   connection.state = ConnectionState.INVITED;
   connection.invitation = invitation;
-  connections.push(connection);
   return connection;
 }
 
 export async function handleInvitation(inboundMessage: InboundMessage) {
   const invitation = inboundMessage.message;
   const connection = await createConnection();
+  return createConnectionRequestMessage(connection, invitation);
+}
+
+export async function getAgencyMessages(): Promise<any[]> {
+  const messages = await get(`${config.agencyUrl}/api/connections/${inboundConnection.verkey}/messages`);
+  return JSON.parse(messages);
+}
+
+function createConnectionRequestMessage(connection: Connection, invitation: any) {
   const connectionRequest = {
     '@id': '5678876542345',
     '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request',
@@ -113,9 +141,9 @@ export async function handleInvitation(inboundMessage: InboundMessage) {
   };
 
   connection.state = ConnectionState.REQUESTED;
-  connections.push(connection);
 
   const outboundMessage = {
+    connection,
     endpoint: invitation.serviceEndpoint,
     payload: connectionRequest,
     recipientKeys: invitation.recipientKeys,
@@ -169,6 +197,7 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage) {
   connection.state = ConnectionState.RESPONDED;
 
   const outboundMessage = {
+    connection,
     endpoint: connection.endpoint,
     payload: signedConnectionResponse,
     recipientKeys: [connection.theirKey],
@@ -226,6 +255,7 @@ export async function handleConnectionResponse(unpackedMessage: InboundMessage) 
   connection.state = ConnectionState.COMPLETE;
 
   const outboundMessage = {
+    connection,
     endpoint: connection.endpoint,
     payload: response,
     recipientKeys: [sender_verkey],
@@ -259,6 +289,7 @@ async function handleBasicMessage(inboundMessage: InboundMessage) {
   }
 
   const outboundMessage = {
+    connection,
     endpoint: connection.endpoint,
     payload: response,
     recipientKeys: [sender_verkey],
@@ -293,17 +324,38 @@ export function getMessages(verkey: Verkey) {
   if (!connection) {
     throw new Error(`Connection for verkey ${verkey} not found!`);
   }
-  return connection.messages;
+  const messages = [...connection.messages];
+  return messages;
+}
+
+export function getMessagesByTheirKey(theirKey: Verkey) {
+  console.log(`Getting messages ${theirKey}`);
+  const connection = findByTheirKey(theirKey);
+  if (!connection) {
+    console.log(`Connection for theirKey ${theirKey} not found!`);
+    return [];
+  }
+  const messages = [...connection.messages];
+  connection.messages = [];
+  return messages;
 }
 
 export async function sendMessage(outboundMessage: OutboundMessage) {
   logger.logJson('outboundMessage', outboundMessage);
   const outboundPackedMessage = await pack(outboundMessage);
-  await post(outboundMessage.endpoint, JSON.stringify(outboundPackedMessage));
+  if (isAgency()) {
+    outboundMessage.connection.messages.push(outboundPackedMessage);
+  } else {
+    await post(outboundMessage.endpoint, JSON.stringify(outboundPackedMessage));
+  }
 }
 
 export function findByVerkey(verkey: Verkey) {
   return connections.find(connection => connection.verkey === verkey);
+}
+
+export function findByTheirKey(theirKey: Verkey) {
+  return connections.find(connection => connection.theirKey === theirKey);
 }
 
 export function createBasicMessage(connection: Connection, content: string) {
@@ -320,6 +372,7 @@ export function createBasicMessage(connection: Connection, content: string) {
   }
 
   const outboundMessage = {
+    connection,
     endpoint: connection.endpoint,
     payload: basicMessage,
     recipientKeys: [connection.theirKey],
@@ -345,13 +398,18 @@ async function createConnection(): Promise<Connection> {
       },
     ],
   };
-  return {
+
+  const connection = {
     did,
     didDoc: did_doc,
     verkey,
     state: ConnectionState.INIT,
     messages: [],
   };
+
+  connections.push(connection);
+
+  return connection;
 }
 
 async function pack(outboundMessage: OutboundMessage): Promise<JsonWebKey> {
