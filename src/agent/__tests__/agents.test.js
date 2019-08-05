@@ -1,41 +1,39 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { get, post } = require('../http');
-const { poll } = require('../polling');
-const { Agent } = require('../agent/Agent');
+const { Subject } = require('rxjs');
+const { Agent } = require('../Agent');
+const { decodeInvitationFromUrl } = require('../../helpers');
+const { poll } = require('../../polling');
 
 const aliceWalletConfig = {
-  walletId: 'e2e-alice',
+  walletId: 'alice',
   walletSeed: '00000000000000000000000000000Test01',
 };
 
 const bobWalletConfig = {
-  walletId: 'e2e-bob',
+  walletId: 'bob',
   walletSeed: '00000000000000000000000000000Test02',
 };
 
-describe('agents with agency', () => {
+describe('agents', () => {
   let aliceAgent;
   let bobAgent;
 
   test('make a connection between agents', async () => {
-    const agencyUrl = `http://localhost:3000`;
+    const aliceMessages = new Subject();
+    const bobMessages = new Subject();
 
-    const aliceAgentSender = new HttpMessageSender(agencyUrl);
-    const bobAgentSender = new HttpMessageSender(agencyUrl);
+    const aliceAgentSender = new ArrayMessageSender(bobMessages);
+    const bobAgentSender = new ArrayMessageSender(aliceMessages);
 
     aliceAgent = new Agent('Alice', aliceWalletConfig, aliceAgentSender);
     await aliceAgent.init();
-    const aliceAgencyInvitationUrl = await get(`${agencyUrl}/invitation`);
-    await aliceAgent.acceptInvitationUrl(aliceAgencyInvitationUrl);
 
     bobAgent = new Agent('Bob', bobWalletConfig, bobAgentSender);
     await bobAgent.init();
-    const bobAgencyInvitationUrl = await get(`${agencyUrl}/invitation`);
-    await bobAgent.acceptInvitationUrl(bobAgencyInvitationUrl);
 
-    pollMessages(aliceAgent, agencyUrl);
-    pollMessages(bobAgent, agencyUrl);
+    subscribe(aliceAgent, aliceMessages);
+    subscribe(bobAgent, bobMessages);
 
     const invitationUrl = await aliceAgent.createInvitationUrl();
     await bobAgent.acceptInvitationUrl(invitationUrl);
@@ -90,26 +88,20 @@ describe('agents with agency', () => {
   });
 });
 
-function pollMessages(agent, agencyUrl) {
-  poll(
-    async () => {
-      const message = await get(`${agencyUrl}/get-message/${verkey}`);
-      agent.receiveMessage(message);
-    },
-    true,
-    1000
-  );
+function subscribe(agent, subject) {
+  subject.subscribe({
+    next: message => agent.receiveMessage(message),
+  });
 }
 
-class HttpMessageSender {
-  constructor(endpoint) {
-    this.endpoint = endpoint;
+class ArrayMessageSender {
+  constructor(subject) {
+    this.subject = subject;
   }
 
-  async sendMessage(message) {
+  sendMessage(message) {
     console.log('Sending message...');
     console.log(message);
-    const response = await post(`${this.endpoint}/msg`);
-    console.log(`HTTP response status: ${response.status} - ${response.statusText}`);
+    this.subject.next(message);
   }
 }

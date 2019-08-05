@@ -7,12 +7,12 @@
     "tsc": "tsc",
     "lint": "eslint '**/*.ts'",
     "test": "jest",
-    "dev": "ts-node-dev --respawn --transpileOnly ./src/server.ts",
-    "prod": "tsc && node ./build/server.js"
+    "dev": "ts-node-dev --respawn --transpileOnly ./src/agency.ts",
+    "prod": "tsc && node ./build/agency.js"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",
-    "@types/jest": "^24.0.15",
+    "@types/jest": "^24.0.16",
     "@types/lodash.isempty": "^4.4.6",
     "@types/node-fetch": "^2.3.7",
     "@typescript-eslint/eslint-plugin": "^1.12.0",
@@ -22,6 +22,7 @@
     "eslint-plugin-prettier": "^3.1.0",
     "jest": "^24.8.0",
     "prettier": "^1.18.2",
+    "rxjs": "^6.5.2",
     "ts-jest": "^24.0.2",
     "ts-node-dev": "^1.0.0-pre.40",
     "typescript": "^3.5.3"
