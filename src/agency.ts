@@ -25,8 +25,8 @@ const agent = new Agent(config.label, walletConfig, new StorageMessageSender());
 app.use(bodyParser.text());
 
 app.get('/', async (req, res) => {
-  // TODO return agency did and verkey
-  res.send({});
+  const agentDid = agent.getAgentDid();
+  res.send(agentDid);
 });
 
 // Create new invitation as inviter to invitee
@@ -50,5 +50,6 @@ app.get('/api/connections/:verkey/message', async (req, res) => {
 
 app.listen(PORT, async () => {
   await agent.init();
+  await agent.setAgentDid();
   logger.log(`Application started on port ${PORT}`);
 });

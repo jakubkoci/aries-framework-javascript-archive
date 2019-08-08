@@ -5,12 +5,18 @@ import { sign } from '../decorators';
 
 interface Wallet {
   init(): Promise<void>;
-  createDid(): Promise<[Did, Verkey]>;
+  createDid(didConfig?: DidConfig): Promise<[Did, Verkey]>;
+  keyForLocalDid(did: Did): Promise<Verkey>;
   pack(payload: {}, recipientKeys: Verkey[], senderVk: Verkey | null): Promise<JsonWebKey>;
   unpack(messagePackage: JsonWebKey): Promise<InboundMessage>;
   sign(message: Message, attribute: string, verkey: Verkey): Promise<Message>;
   verify(signerVerkey: Verkey, data: Buffer, signature: Buffer): Promise<boolean>;
 }
+
+type DidConfig = {
+  did: string;
+  seed: string;
+};
 
 type WalletConfig = {
   id: string;
@@ -45,12 +51,20 @@ class IndyWallet implements Wallet {
     logger.log(`Wallet opened with handle: ${this.wh}`);
   }
 
-  createDid(): Promise<[string, string]> {
+  createDid(didConfig?: DidConfig): Promise<[string, string]> {
     if (!this.wh) {
       throw Error('Wallet has not been initialized yet');
     }
 
-    return indy.createAndStoreMyDid(this.wh, {});
+    return indy.createAndStoreMyDid(this.wh, didConfig || {});
+  }
+
+  keyForLocalDid(did: Did) {
+    if (!this.wh) {
+      throw Error('Wallet has not been initialized yet');
+    }
+
+    return indy.keyForLocalDid(this.wh, did);
   }
 
   async pack(payload: {}, recipientKeys: Verkey[], senderVk: Verkey): Promise<JsonWebKey> {

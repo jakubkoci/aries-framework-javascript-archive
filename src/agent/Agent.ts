@@ -1,4 +1,4 @@
-import { ConnectionState, Connection, OutboundMessage, InboundMessage } from '../types';
+import { Connection, OutboundMessage } from '../types';
 import { IndyWallet, Wallet } from './Wallet';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from '../helpers';
 import logger from '../logger';
@@ -17,20 +17,29 @@ type AgentWalletConfig = {
   walletSeed: string;
 };
 
+type AgentConfig = {
+  did?: Did;
+  verkey?: Verkey;
+};
+
 class Agent {
   label: string;
   messageSender: MessageSender;
   wallet: Wallet;
   connectionService: ConnectionService;
+  agentConfig: AgentConfig;
 
   config = {
     url: 'TODO',
     port: 'TODO',
+    did: 'VsKV7grR1BUE29mG2Fm2kX', // TODO Replace with value from app config
+    didSeed: '0000000000000000000000000Forward', // TODO Replace with value from app config
   };
 
   constructor(label: string, agentWalletConfig: AgentWalletConfig, messageSender: MessageSender) {
     this.label = label;
     this.messageSender = messageSender;
+    this.agentConfig = {};
 
     const walletConfig = { id: agentWalletConfig.walletId };
     const walletCredentials = { key: agentWalletConfig.walletSeed };
@@ -40,6 +49,28 @@ class Agent {
 
   async init() {
     await this.wallet.init();
+  }
+
+  async setAgentDid() {
+    try {
+      const [did, verkey] = await this.wallet.createDid({ did: this.config.did, seed: this.config.didSeed });
+      this.agentConfig = { did, verkey };
+      console.log('Agent config', this.agentConfig);
+    } catch (error) {
+      if (error.indyName && error.indyName === 'DidAlreadyExistsError') {
+        // This is not a problem, we just reuse it.
+        logger.log(error.indyName);
+        const did = this.config.did;
+        const verkey = await this.wallet.keyForLocalDid(this.config.did);
+        this.agentConfig = { did, verkey };
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  getAgentDid() {
+    return this.agentConfig;
   }
 
   async createInvitationUrl() {
