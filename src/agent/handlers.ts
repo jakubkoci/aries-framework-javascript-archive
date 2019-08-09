@@ -1,12 +1,20 @@
+import uuid from 'uuid/v4';
 import { InboundMessage, OutboundMessage, Connection, ConnectionState } from '../types';
 import { ConnectionService } from './ConnectionService';
 import { Wallet } from './Wallet';
+import { MessageType } from './messages';
 
-type Handler = (inboudMessage: InboundMessage, context: Context) => Promise<OutboundMessage | null>;
+export type Handler = (inboudMessage: InboundMessage, context: Context) => Promise<OutboundMessage | null>;
 
-export interface Handlers {
-  [key: string]: Handler;
-}
+const { ConnectionInvitation, ConnectionRequest, ConnectionResposne, Ack, BasicMessage } = MessageType;
+
+export const handlers = {
+  [ConnectionInvitation]: handleInvitation,
+  [ConnectionRequest]: handleConnectionRequest,
+  [ConnectionResposne]: handleConnectionResponse,
+  [Ack]: handleAckMessage,
+  [BasicMessage]: handleBasicMessage,
+};
 
 interface Context {
   config: any;
@@ -23,8 +31,8 @@ export async function handleInvitation(inboundMessage: InboundMessage, context: 
 
 function createConnectionRequestMessage(connection: Connection, invitation: any, label: string) {
   const connectionRequest = {
-    '@id': '5678876542345',
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request',
+    '@type': ConnectionRequest,
+    '@id': uuid(),
     label: label,
     connection: {
       did: connection.did,
@@ -70,8 +78,8 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage, c
   }
 
   const connectionResponse = {
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
-    '@id': '12345678900987654321',
+    '@type': ConnectionResposne,
+    '@id': uuid(),
     '~thread': {
       thid: message['@id'],
     },
@@ -134,8 +142,8 @@ export async function handleConnectionResponse(unpackedMessage: InboundMessage, 
   connection.endpoint = connectionReponse.did_doc.service[0].serviceEndpoint;
 
   const response = {
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack',
-    '@id': '12345678900987654321',
+    '@type': Ack,
+    '@id': uuid(),
     status: 'OK',
     '~thread': {
       thid: message['@id'],
@@ -171,8 +179,8 @@ export async function handleBasicMessage(inboundMessage: InboundMessage, context
   connection.messages.push(message);
 
   const response = {
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack',
-    '@id': '12345678900987654321',
+    '@type': Ack,
+    '@id': uuid(),
     status: 'OK',
     '~thread': {
       thid: message['@id'],

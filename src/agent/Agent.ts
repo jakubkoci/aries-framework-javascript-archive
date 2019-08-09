@@ -3,14 +3,8 @@ import { IndyWallet, Wallet } from './Wallet';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from '../helpers';
 import logger from '../logger';
 import { ConnectionService } from './ConnectionService';
-import {
-  Handlers,
-  handleInvitation,
-  handleConnectionResponse,
-  handleConnectionRequest,
-  handleAckMessage,
-  handleBasicMessage,
-} from './handlers';
+import { Handler, handlers } from './handlers';
+import { createForwardMessage, createBasicMessage } from './messages';
 
 type AgentWalletConfig = {
   walletId: string;
@@ -28,6 +22,7 @@ class Agent {
   wallet: Wallet;
   connectionService: ConnectionService;
   agentConfig: AgentConfig;
+  handlers: { [key: string]: Handler } = {};
 
   config = {
     url: 'TODO',
@@ -45,6 +40,7 @@ class Agent {
     const walletCredentials = { key: agentWalletConfig.walletSeed };
     this.wallet = new IndyWallet(walletConfig, walletCredentials);
     this.connectionService = new ConnectionService(this.config, this.wallet);
+    this.handlers = handlers;
   }
 
   async init() {
@@ -122,18 +118,10 @@ class Agent {
 
   private dispatch(inboundMessage: any): Promise<OutboundMessage | null> {
     const messageType: string = inboundMessage.message['@type'];
-    const handlers: Handlers = {
-      'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation': handleInvitation,
-      'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/request': handleConnectionRequest,
-      'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response': handleConnectionResponse,
-      'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack': handleAckMessage,
-      'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message': handleBasicMessage,
-    };
-
-    const handler = handlers[messageType];
+    const handler = this.handlers[messageType];
 
     if (!handler) {
-      throw new Error('No handler for message found');
+      throw new Error(`No handler for message type "${messageType}" found`);
     }
 
     const context = {
@@ -154,11 +142,7 @@ class Agent {
     let message = outboundPackedMessage;
     if (routingKeys.length > 0) {
       for (const routingKey of routingKeys) {
-        const forwardMessage = {
-          '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/routing/1.0/forward',
-          to: 'did:sov:1234abcd#4',
-          msg: message,
-        };
+        const forwardMessage = createForwardMessage('did:sov:1234abcd#4', message);
         message = await this.wallet.pack(forwardMessage, [routingKey], senderVk);
       }
     }
@@ -169,31 +153,6 @@ class Agent {
 
 interface MessageSender {
   sendMessage(message: any): any;
-}
-
-function createBasicMessage(connection: Connection, content: string) {
-  const basicMessage = {
-    '@id': '123456780',
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message',
-    '~l10n': { locale: 'en' },
-    sent_time: new Date().toISOString(),
-    content,
-  };
-
-  if (!connection.endpoint || !connection.theirKey) {
-    throw new Error('Invalid connection endpoint');
-  }
-
-  const outboundMessage = {
-    connection,
-    endpoint: connection.endpoint,
-    payload: basicMessage,
-    recipientKeys: [connection.theirKey],
-    routingKeys: [],
-    senderVk: connection.verkey,
-  };
-
-  return outboundMessage;
 }
 
 export { Agent };
