@@ -7,6 +7,7 @@ export enum MessageType {
   ConnectionResposne = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
   Ack = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack',
   BasicMessage = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message',
+  ForwardMessage = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/routing/1.0/forward',
 }
 
 export function createBasicMessage(connection: Connection, content: string) {
@@ -36,7 +37,7 @@ export function createBasicMessage(connection: Connection, content: string) {
 
 export function createForwardMessage(to: Verkey, msg: any) {
   const forwardMessage = {
-    '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/routing/1.0/forward',
+    '@type': MessageType.ForwardMessage,
     to,
     msg,
   };

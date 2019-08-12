@@ -6,7 +6,7 @@ import { MessageType } from './messages';
 
 export type Handler = (inboudMessage: InboundMessage, context: Context) => Promise<OutboundMessage | null>;
 
-const { ConnectionInvitation, ConnectionRequest, ConnectionResposne, Ack, BasicMessage } = MessageType;
+const { ConnectionInvitation, ConnectionRequest, ConnectionResposne, Ack, BasicMessage, ForwardMessage } = MessageType;
 
 export const handlers = {
   [ConnectionInvitation]: handleInvitation,
@@ -14,6 +14,7 @@ export const handlers = {
   [ConnectionResposne]: handleConnectionResponse,
   [Ack]: handleAckMessage,
   [BasicMessage]: handleBasicMessage,
+  // [ForwardMessage]: handleForwardMessage, TODO
 };
 
 interface Context {
@@ -47,7 +48,7 @@ function createConnectionRequestMessage(connection: Connection, invitation: any,
     endpoint: invitation.serviceEndpoint,
     payload: connectionRequest,
     recipientKeys: invitation.recipientKeys,
-    routingKeys: [],
+    routingKeys: invitation.routingKeys,
     senderVk: null,
   };
 
@@ -102,7 +103,7 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage, c
     endpoint: connection.endpoint,
     payload: signedConnectionResponse,
     recipientKeys: [connection.theirKey],
-    routingKeys: [],
+    routingKeys: connection.didDoc.service[0].routingKeys,
     senderVk: connection.verkey,
   };
 
@@ -161,7 +162,7 @@ export async function handleConnectionResponse(unpackedMessage: InboundMessage, 
     endpoint: connection.endpoint,
     payload: response,
     recipientKeys: [sender_verkey],
-    routingKeys: [],
+    routingKeys: connection.didDoc.service[0].routingKeys,
     senderVk: connection.verkey,
   };
   return outboundMessage;
@@ -196,7 +197,7 @@ export async function handleBasicMessage(inboundMessage: InboundMessage, context
     endpoint: connection.endpoint,
     payload: response,
     recipientKeys: [sender_verkey],
-    routingKeys: [],
+    routingKeys: connection.didDoc.service[0].routingKeys,
     senderVk: connection.verkey,
   };
 
@@ -217,4 +218,34 @@ export async function handleAckMessage(inboundMessage: InboundMessage, context: 
   }
 
   return null;
+}
+
+export async function handleForwardMessage(inboundMessage: InboundMessage, context: Context) {
+  const { connectionService } = context;
+  const { message, recipient_verkey, sender_verkey } = inboundMessage;
+
+  const { msg, to } = message;
+
+  if (!to) {
+    throw new Error('Invalid Message: Missing required attribute "to"');
+  }
+
+  // TODO return message to be stored for "to" connection
+
+  const connection = connectionService.findByVerkey(to);
+
+  if (!connection) {
+    throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+  }
+
+  const outboundMessage = {
+    connection,
+    endpoint: connection.endpoint,
+    payload: msg,
+    recipientKeys: [sender_verkey],
+    routingKeys: connection.didDoc.service[0].routingKeys,
+    senderVk: connection.verkey,
+  };
+
+  return outboundMessage;
 }

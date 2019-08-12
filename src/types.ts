@@ -1,3 +1,20 @@
+export type InitConfig = {
+  url: string;
+  port: string | number;
+  label: string;
+  walletId: string;
+  walletSeed: string;
+  did: Did;
+  didSeed: string;
+  routingConnection?: Connection;
+  agencyVerkey?: Verkey;
+};
+
+export type AgentConfig = {
+  did?: Did;
+  verkey?: Verkey;
+};
+
 export enum ConnectionState {
   INIT,
   INVITED,
@@ -25,6 +42,11 @@ export interface ConnectionInvitation {
 
 export interface DidDoc {
   '@context': string;
+  service: Service[];
+}
+
+interface Service {
+  routingKeys: Verkey[];
 }
 
 export interface Message {

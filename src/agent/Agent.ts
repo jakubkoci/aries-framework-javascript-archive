@@ -1,25 +1,10 @@
-import { Connection, OutboundMessage } from '../types';
+import { Connection, OutboundMessage, InitConfig, AgentConfig } from '../types';
 import { IndyWallet, Wallet } from './Wallet';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from '../helpers';
 import logger from '../logger';
 import { ConnectionService } from './ConnectionService';
 import { Handler, handlers } from './handlers';
 import { createForwardMessage, createBasicMessage } from './messages';
-
-type InitConfig = {
-  url: string;
-  port: string | number;
-  label: string;
-  walletId: string;
-  walletSeed: string;
-  did: Did;
-  didSeed: string;
-};
-
-type AgentConfig = {
-  did?: Did;
-  verkey?: Verkey;
-};
 
 class Agent {
   config: InitConfig;
@@ -122,6 +107,11 @@ class Agent {
     return this.connectionService.findByTheirKey(verkey);
   }
 
+  setRoutingConnection(agencyVerkey: Verkey, connection: Connection) {
+    this.config.agencyVerkey = agencyVerkey;
+    this.config.routingConnection = connection;
+  }
+
   async sendMessageToConnection(connection: Connection, message: string) {
     const basicMessage = await createBasicMessage(connection, message);
     await this.sendMessage(basicMessage);
@@ -154,11 +144,12 @@ class Agent {
     if (routingKeys.length > 0) {
       for (const routingKey of routingKeys) {
         const forwardMessage = createForwardMessage('did:sov:1234abcd#4', message);
+        logger.logJson('Forward message created', forwardMessage);
         message = await this.wallet.pack(forwardMessage, [routingKey], senderVk);
       }
     }
 
-    this.messageSender.sendMessage(outboundPackedMessage, outboundMessage.connection);
+    this.messageSender.sendMessage(message, outboundMessage.connection);
   }
 }
 

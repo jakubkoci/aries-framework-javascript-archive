@@ -1,8 +1,8 @@
-import { Connection, ConnectionState } from '../types';
+import { Connection, ConnectionState, InitConfig } from '../types';
 import { Wallet } from './Wallet';
 
 class ConnectionService {
-  config: any;
+  config: InitConfig;
   wallet: Wallet;
   connections: Connection[] = [];
 
@@ -29,8 +29,8 @@ class ConnectionService {
           type: 'did-communication',
           priority: 0,
           recipientKeys: [verkey],
-          routingKeys: [],
-          serviceEndpoint: `${this.config.url}:${this.config.port}/msg`,
+          routingKeys: this.getRoutingKeys(),
+          serviceEndpoint: this.getEndpoint(),
         },
       ],
     };
@@ -67,10 +67,20 @@ class ConnectionService {
       '@id': '12345678900987654321',
       label: this.config.label,
       recipientKeys: [verkey],
-      serviceEndpoint: `${this.config.url}:${this.config.port}/msg`,
-      routingKeys: [],
+      serviceEndpoint: this.getEndpoint(),
+      routingKeys: this.getRoutingKeys(),
     };
     return invitation;
+  }
+
+  private getEndpoint() {
+    const { routingConnection } = this.config;
+    return routingConnection ? `${routingConnection.endpoint}` : `${this.config.url}:${this.config.port}/msg`;
+  }
+
+  private getRoutingKeys() {
+    const { agencyVerkey, routingConnection } = this.config;
+    return agencyVerkey ? [agencyVerkey] : [];
   }
 }
 

@@ -64,11 +64,15 @@ describe('with agency', () => {
     );
     const agencyConnectionAtBobAgency = JSON.parse(await get(`${agencyUrl}/api/connections/${bobKeyAtBobAgency}`));
 
+    const { verkey: agencyVerkey } = JSON.parse(await get(`${agencyUrl}/`));
+    aliceAgent.setRoutingConnection(agencyVerkey, aliceConnectionAtAliceAgency);
+    bobAgent.setRoutingConnection(agencyVerkey, bobConnectionAtBobAgency);
+
     expect(aliceConnectionAtAliceAgency).toBeConnectedWith(agencyConnectionAtAliceAgency);
     expect(bobConnectionAtBobAgency).toBeConnectedWith(agencyConnectionAtBobAgency);
   });
 
-  test.skip('make a connection via agency', async () => {
+  test('make a connection via agency', async () => {
     const invitationUrl = await aliceAgent.createInvitationUrl();
     await bobAgent.acceptInvitationUrl(invitationUrl);
 
