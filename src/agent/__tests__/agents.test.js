@@ -4,13 +4,18 @@ const { Subject } = require('rxjs');
 const { Agent } = require('../Agent');
 const { decodeInvitationFromUrl } = require('../../helpers');
 const { poll } = require('../../polling');
+const { toBeConnectedWith } = require('./utils');
 
-const aliceWalletConfig = {
+expect.extend({ toBeConnectedWith });
+
+const aliceConfig = {
+  label: 'Alice',
   walletId: 'alice',
   walletSeed: '00000000000000000000000000000Test01',
 };
 
-const bobWalletConfig = {
+const bobConfig = {
+  label: 'Bob',
   walletId: 'bob',
   walletSeed: '00000000000000000000000000000Test02',
 };
@@ -26,10 +31,10 @@ describe('agents', () => {
     const aliceAgentSender = new ArrayMessageSender(bobMessages);
     const bobAgentSender = new ArrayMessageSender(aliceMessages);
 
-    aliceAgent = new Agent('Alice', aliceWalletConfig, aliceAgentSender);
+    aliceAgent = new Agent(aliceConfig, aliceAgentSender);
     await aliceAgent.init();
 
-    bobAgent = new Agent('Bob', bobWalletConfig, bobAgentSender);
+    bobAgent = new Agent(bobConfig, bobAgentSender);
     await bobAgent.init();
 
     subscribe(aliceAgent, aliceMessages);
@@ -58,10 +63,8 @@ describe('agents', () => {
     );
     console.log('bobConnectionAtAliceBob\n', bobConnectionAtBobAlice);
 
-    expect(aliceConnectionAtAliceBob.did).toBe(bobConnectionAtBobAlice.theirDid);
-    expect(aliceConnectionAtAliceBob.verkey).toBe(bobConnectionAtBobAlice.theirKey);
-    expect(bobConnectionAtBobAlice.did).toBe(aliceConnectionAtAliceBob.theirDid);
-    expect(bobConnectionAtBobAlice.verkey).toBe(aliceConnectionAtAliceBob.theirKey);
+    expect(aliceConnectionAtAliceBob).toBeConnectedWith(bobConnectionAtBobAlice);
+    expect(bobConnectionAtBobAlice).toBeConnectedWith(aliceConnectionAtAliceBob);
   });
 
   test('send a message to connection', async () => {

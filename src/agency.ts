@@ -3,24 +3,42 @@ import bodyParser from 'body-parser';
 import config from './config';
 import logger from './logger';
 import { Agent } from './agent/Agent';
+import { OutboundMessage, Connection } from './types';
 
 class StorageMessageSender {
-  async sendMessage(message: any) {
+  messages: { [key: string]: any } = {};
+
+  async sendMessage(message: OutboundMessage, connection?: Connection) {
     // TODO Store message for given connection
     console.log('Storing message...');
     console.log(message);
+
+    if (connection) {
+      if (!connection.theirKey) {
+        throw new Error('Trying to save message without theirKey!');
+      }
+
+      if (!this.messages[connection.theirKey]) {
+        this.messages[connection.theirKey] = [];
+      }
+
+      this.messages[connection.theirKey].push(message);
+    }
+  }
+
+  takeFirstMessage(verkey: Verkey) {
+    if (this.messages[verkey]) {
+      return this.messages[verkey].shift();
+    }
+    return null;
   }
 }
 
 const PORT = config.port;
 const app = express();
 
-const walletConfig = {
-  walletId: config.walletId,
-  walletSeed: config.walletSeed,
-};
-
-const agent = new Agent(config.label, walletConfig, new StorageMessageSender());
+const messageSender = new StorageMessageSender();
+const agent = new Agent(config, messageSender);
 
 app.use(bodyParser.text());
 
@@ -43,9 +61,22 @@ app.post('/msg', async (req, res) => {
 });
 
 app.get('/api/connections/:verkey/message', async (req, res) => {
-  // TODO return first message for connection by verkey
-  const message = '';
+  // TODO Return first message for connection by their verkey.
+  const verkey = req.params.verkey;
+  const message = messageSender.takeFirstMessage(verkey);
   res.send(message);
+});
+
+app.get('/api/connections/:verkey', async (req, res) => {
+  // TODO This endpoint is for testing purpose only. Return agency connection by their verkey.
+  const verkey = req.params.verkey;
+  const connection = agent.findConnectionByTheirKey(verkey);
+  res.send(connection);
+});
+
+app.get('/api/messages', async (req, res) => {
+  // TODO This endpoint is for testing purpose only.
+  res.send(messageSender.messages);
 });
 
 app.listen(PORT, async () => {

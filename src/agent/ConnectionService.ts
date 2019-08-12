@@ -56,6 +56,10 @@ class ConnectionService {
     return this.connections.find(connection => connection.verkey === verkey);
   }
 
+  findByTheirKey(verkey: Verkey) {
+    return this.connections.find(connection => connection.theirKey === verkey);
+  }
+
   private async createInvitation(connection: Connection) {
     const { verkey } = connection;
     const invitation = {

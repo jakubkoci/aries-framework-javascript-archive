@@ -6,9 +6,14 @@ import { ConnectionService } from './ConnectionService';
 import { Handler, handlers } from './handlers';
 import { createForwardMessage, createBasicMessage } from './messages';
 
-type AgentWalletConfig = {
+type InitConfig = {
+  url: string;
+  port: string | number;
+  label: string;
   walletId: string;
   walletSeed: string;
+  did: Did;
+  didSeed: string;
 };
 
 type AgentConfig = {
@@ -17,27 +22,20 @@ type AgentConfig = {
 };
 
 class Agent {
-  label: string;
+  config: InitConfig;
   messageSender: MessageSender;
   wallet: Wallet;
   connectionService: ConnectionService;
   agentConfig: AgentConfig;
   handlers: { [key: string]: Handler } = {};
 
-  config = {
-    url: 'TODO',
-    port: 'TODO',
-    did: 'VsKV7grR1BUE29mG2Fm2kX', // TODO Replace with value from app config
-    didSeed: '0000000000000000000000000Forward', // TODO Replace with value from app config
-  };
-
-  constructor(label: string, agentWalletConfig: AgentWalletConfig, messageSender: MessageSender) {
-    this.label = label;
+  constructor(config: InitConfig, messageSender: MessageSender) {
+    this.config = config;
     this.messageSender = messageSender;
     this.agentConfig = {};
 
-    const walletConfig = { id: agentWalletConfig.walletId };
-    const walletCredentials = { key: agentWalletConfig.walletSeed };
+    const walletConfig = { id: config.walletId };
+    const walletCredentials = { key: config.walletSeed };
     this.wallet = new IndyWallet(walletConfig, walletCredentials);
     this.connectionService = new ConnectionService(this.config, this.wallet);
     this.handlers = handlers;
@@ -47,6 +45,9 @@ class Agent {
     await this.wallet.init();
   }
 
+  /**
+   * This method will be probably used only when agent is running as routing agency
+   */
   async setAgentDid() {
     try {
       const [did, verkey] = await this.wallet.createDid({ did: this.config.did, seed: this.config.didSeed });
@@ -65,6 +66,9 @@ class Agent {
     }
   }
 
+  /**
+   * This method will be probably used only when agent is running as routing agency
+   */
   getAgentDid() {
     return this.agentConfig;
   }
@@ -82,11 +86,12 @@ class Agent {
 
   async acceptInvitationUrl(invitationUrl: string) {
     const invitation = decodeInvitationFromUrl(invitationUrl);
-    await this.receiveMessage(invitation);
+    const verkey = await this.receiveMessage(invitation);
+    return verkey;
   }
 
   async receiveMessage(inboundPackedMessage: any) {
-    logger.logJson(`Agent ${this.label} received message:`, inboundPackedMessage);
+    logger.logJson(`Agent ${this.config.label} received message:`, inboundPackedMessage);
     let inboundMessage;
 
     if (!inboundPackedMessage['@type']) {
@@ -101,6 +106,8 @@ class Agent {
     if (outboundMessage) {
       this.sendMessage(outboundMessage);
     }
+
+    return outboundMessage && outboundMessage.connection.verkey;
   }
 
   getConnections() {
@@ -109,6 +116,10 @@ class Agent {
 
   findConnectionByMyKey(verkey: Verkey) {
     return this.connectionService.findByVerkey(verkey);
+  }
+
+  findConnectionByTheirKey(verkey: Verkey) {
+    return this.connectionService.findByTheirKey(verkey);
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {
@@ -147,12 +158,12 @@ class Agent {
       }
     }
 
-    this.messageSender.sendMessage(outboundPackedMessage);
+    this.messageSender.sendMessage(outboundPackedMessage, outboundMessage.connection);
   }
 }
 
 interface MessageSender {
-  sendMessage(message: any): any;
+  sendMessage(message: any, connection?: Connection): any;
 }
 
 export { Agent };
