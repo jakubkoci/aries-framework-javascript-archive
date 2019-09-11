@@ -1,5 +1,6 @@
 import { Connection, ConnectionState, InitConfig } from '../types';
 import { Wallet } from './Wallet';
+import { createInvitation, MessageType } from './messages';
 
 class ConnectionService {
   config: InitConfig;
@@ -13,7 +14,8 @@ class ConnectionService {
 
   async createConnectionWithInvitation(): Promise<Connection> {
     const connection = await this.createConnection();
-    const invitation = await this.createInvitation(connection);
+    const invitationDetails = this.getInvitationDetails(connection);
+    const invitation = await createInvitation(invitationDetails);
     connection.state = ConnectionState.INVITED;
     connection.invitation = invitation;
     return connection;
@@ -60,17 +62,14 @@ class ConnectionService {
     return this.connections.find(connection => connection.theirKey === verkey);
   }
 
-  private async createInvitation(connection: Connection) {
+  private getInvitationDetails(connection: Connection) {
     const { verkey } = connection;
-    const invitation = {
-      '@type': 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation',
-      '@id': '12345678900987654321',
+    return {
       label: this.config.label,
       recipientKeys: [verkey],
       serviceEndpoint: this.getEndpoint(),
       routingKeys: this.getRoutingKeys(),
     };
-    return invitation;
   }
 
   private getEndpoint() {

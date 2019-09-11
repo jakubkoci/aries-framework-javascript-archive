@@ -40,6 +40,13 @@ export interface ConnectionInvitation {
   recipientKeys: string[];
 }
 
+export interface InvitationDetails {
+  label: string;
+  serviceEndpoint: string;
+  recipientKeys: Verkey[];
+  routingKeys: Verkey[];
+}
+
 export interface DidDoc {
   '@context': string;
   service: Service[];
