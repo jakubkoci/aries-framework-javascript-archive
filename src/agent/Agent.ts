@@ -113,7 +113,7 @@ class Agent {
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {
-    const basicMessage = await createBasicMessage(connection, message);
+    const basicMessage = createBasicMessage(connection, message);
     await this.sendMessage(basicMessage);
   }
 
