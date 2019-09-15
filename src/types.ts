@@ -70,9 +70,14 @@ export interface InboundMessage {
 
 export interface OutboundMessage {
   connection: Connection;
-  endpoint: string;
+  endpoint?: string;
   payload: Message;
   recipientKeys: Verkey[];
   routingKeys: Verkey[];
   senderVk: Verkey | null;
+}
+
+export interface Agency {
+  verkey: Verkey;
+  connection: Connection;
 }

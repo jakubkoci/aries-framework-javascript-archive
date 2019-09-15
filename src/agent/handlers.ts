@@ -1,12 +1,21 @@
 import uuid from 'uuid/v4';
-import { InboundMessage, OutboundMessage, Connection, ConnectionState } from '../types';
+import { InboundMessage, OutboundMessage, Connection, ConnectionState, Agency } from '../types';
 import { ConnectionService } from './ConnectionService';
 import { Wallet } from './Wallet';
 import { MessageType } from './messages';
+import { RoutingService } from './RoutingService';
 
 export type Handler = (inboudMessage: InboundMessage, context: Context) => Promise<OutboundMessage | null>;
 
-const { ConnectionInvitation, ConnectionRequest, ConnectionResposne, Ack, BasicMessage, ForwardMessage } = MessageType;
+const {
+  ConnectionInvitation,
+  ConnectionRequest,
+  ConnectionResposne,
+  Ack,
+  BasicMessage,
+  RouteUpdateMessage,
+  ForwardMessage,
+} = MessageType;
 
 export const handlers = {
   [ConnectionInvitation]: handleInvitation,
@@ -14,19 +23,22 @@ export const handlers = {
   [ConnectionResposne]: handleConnectionResponse,
   [Ack]: handleAckMessage,
   [BasicMessage]: handleBasicMessage,
-  // [ForwardMessage]: handleForwardMessage, TODO
+  [RouteUpdateMessage]: handleRouteUpdateMessage,
+  [ForwardMessage]: handleForwardMessage,
 };
 
 interface Context {
   config: any;
   wallet: Wallet;
+  agency?: Agency;
   connectionService: ConnectionService;
+  routingService: RoutingService; // TODO this is currently used only in agency agent
 }
 
 export async function handleInvitation(inboundMessage: InboundMessage, context: Context) {
-  const { config, connectionService } = context;
+  const { config, connectionService, agency } = context;
   const invitation = inboundMessage.message;
-  const connection = await connectionService.createConnection();
+  const connection = await connectionService.createConnection(agency);
   return createConnectionRequestMessage(connection, invitation, config.label);
 }
 
@@ -55,9 +67,9 @@ function createConnectionRequestMessage(connection: Connection, invitation: any,
   return outboundMessage;
 }
 
-export async function handleConnectionRequest(unpackedMessage: InboundMessage, context: Context) {
+export async function handleConnectionRequest(inboundMessage: InboundMessage, context: Context) {
   const { wallet, connectionService } = context;
-  const { message, recipient_verkey, sender_verkey } = unpackedMessage;
+  const { message, recipient_verkey, sender_verkey } = inboundMessage;
   const connection = connectionService.findByVerkey(recipient_verkey);
 
   if (!connection) {
@@ -110,9 +122,9 @@ export async function handleConnectionRequest(unpackedMessage: InboundMessage, c
   return outboundMessage;
 }
 
-export async function handleConnectionResponse(unpackedMessage: InboundMessage, context: Context) {
+export async function handleConnectionResponse(inboundMessage: InboundMessage, context: Context) {
   const { wallet, connectionService } = context;
-  const { message, recipient_verkey, sender_verkey } = unpackedMessage;
+  const { message, recipient_verkey, sender_verkey } = inboundMessage;
 
   if (!message['connection~sig']) {
     throw new Error('Invalid message');
@@ -220,8 +232,37 @@ export async function handleAckMessage(inboundMessage: InboundMessage, context: 
   return null;
 }
 
-export async function handleForwardMessage(inboundMessage: InboundMessage, context: Context) {
-  const { connectionService } = context;
+type RouteUpdate = {
+  action: 'add' | 'remove';
+  recipient_key: Verkey;
+};
+
+export async function handleRouteUpdateMessage(inboundMessage: InboundMessage, context: Context) {
+  const { connectionService, routingService } = context;
+  const { message, recipient_verkey, sender_verkey } = inboundMessage;
+  const connection = connectionService.findByVerkey(recipient_verkey);
+
+  if (!connection) {
+    throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+  }
+
+  message.updates.forEach((update: RouteUpdate) => {
+    const { action, recipient_key } = update;
+    if (action === 'add') {
+      routingService.saveRoute(recipient_key, connection);
+    } else {
+      throw new Error(`Unsupported operation ${action}`);
+    }
+  });
+
+  return null;
+}
+
+export async function handleForwardMessage(
+  inboundMessage: InboundMessage,
+  context: Context
+): Promise<OutboundMessage | null> {
+  const { routingService } = context;
   const { message, recipient_verkey, sender_verkey } = inboundMessage;
 
   const { msg, to } = message;
@@ -230,19 +271,21 @@ export async function handleForwardMessage(inboundMessage: InboundMessage, conte
     throw new Error('Invalid Message: Missing required attribute "to"');
   }
 
-  // TODO return message to be stored for "to" connection
-
-  const connection = connectionService.findByVerkey(to);
+  const connection = routingService.findRecipient(to);
 
   if (!connection) {
     throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+  }
+
+  if (!connection.theirKey) {
+    throw new Error(`Connection with verkey ${connection.verkey} has no recipient keys.`);
   }
 
   const outboundMessage = {
     connection,
     endpoint: connection.endpoint,
     payload: msg,
-    recipientKeys: [sender_verkey],
+    recipientKeys: [connection.theirKey],
     routingKeys: connection.didDoc.service[0].routingKeys,
     senderVk: connection.verkey,
   };

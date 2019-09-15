@@ -74,6 +74,18 @@ app.get('/api/connections/:verkey', async (req, res) => {
   res.send(connection);
 });
 
+app.get('/api/connections', async (req, res) => {
+  // TODO This endpoint is for testing purpose only. Return agency connection by their verkey.
+  const connections = agent.getConnections();
+  res.send(connections);
+});
+
+app.get('/api/routes', async (req, res) => {
+  // TODO This endpoint is for testing purpose only. Return agency connection by their verkey.
+  const routes = agent.getRoutes();
+  res.send(routes);
+});
+
 app.get('/api/messages', async (req, res) => {
   // TODO This endpoint is for testing purpose only.
   res.send(messageSender.messages);

@@ -7,6 +7,7 @@ export enum MessageType {
   ConnectionResposne = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/response',
   Ack = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack',
   BasicMessage = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/basicmessage/1.0/message',
+  RouteUpdateMessage = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/routecoordination/1.0/keylist_update',
   ForwardMessage = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/routing/1.0/forward',
 }
 
@@ -39,6 +40,34 @@ export function createBasicMessage(connection: Connection, content: string) {
     connection,
     endpoint: connection.endpoint,
     payload: basicMessage,
+    recipientKeys: [connection.theirKey],
+    routingKeys: [],
+    senderVk: connection.verkey,
+  };
+
+  return outboundMessage;
+}
+
+export function createRouteUpdateMessage(connection: Connection, recipientKey: Verkey) {
+  const routeUpdateMessage = {
+    '@id': uuid(),
+    '@type': MessageType.RouteUpdateMessage,
+    updates: [
+      {
+        recipient_key: recipientKey,
+        action: 'add', // "add" or "remove"
+      },
+    ],
+  };
+
+  if (!connection.endpoint || !connection.theirKey) {
+    throw new Error('Invalid connection endpoint');
+  }
+
+  const outboundMessage = {
+    connection,
+    endpoint: connection.endpoint,
+    payload: routeUpdateMessage,
     recipientKeys: [connection.theirKey],
     routingKeys: [],
     senderVk: connection.verkey,

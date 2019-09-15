@@ -1,4 +1,4 @@
-import { Connection, ConnectionState, InitConfig } from '../types';
+import { Connection, ConnectionState, InitConfig, Agency } from '../types';
 import { Wallet } from './Wallet';
 import { createInvitation, MessageType } from './messages';
 
@@ -12,16 +12,16 @@ class ConnectionService {
     this.wallet = wallet;
   }
 
-  async createConnectionWithInvitation(): Promise<Connection> {
-    const connection = await this.createConnection();
-    const invitationDetails = this.getInvitationDetails(connection);
+  async createConnectionWithInvitation(agency?: Agency): Promise<Connection> {
+    const connection = await this.createConnection(agency);
+    const invitationDetails = this.getInvitationDetails(connection, agency);
     const invitation = await createInvitation(invitationDetails);
     connection.state = ConnectionState.INVITED;
     connection.invitation = invitation;
     return connection;
   }
 
-  async createConnection(): Promise<Connection> {
+  async createConnection(agency?: Agency): Promise<Connection> {
     const [did, verkey] = await this.wallet.createDid();
     const did_doc = {
       '@context': 'https://w3id.org/did/v1',
@@ -31,8 +31,8 @@ class ConnectionService {
           type: 'did-communication',
           priority: 0,
           recipientKeys: [verkey],
-          routingKeys: this.getRoutingKeys(),
-          serviceEndpoint: this.getEndpoint(),
+          routingKeys: this.getRoutingKeys(agency),
+          serviceEndpoint: this.getEndpoint(agency),
         },
       ],
     };
@@ -62,24 +62,24 @@ class ConnectionService {
     return this.connections.find(connection => connection.theirKey === verkey);
   }
 
-  private getInvitationDetails(connection: Connection) {
+  private getInvitationDetails(connection: Connection, agency?: Agency) {
     const { verkey } = connection;
     return {
       label: this.config.label,
       recipientKeys: [verkey],
-      serviceEndpoint: this.getEndpoint(),
-      routingKeys: this.getRoutingKeys(),
+      serviceEndpoint: this.getEndpoint(agency),
+      routingKeys: this.getRoutingKeys(agency),
     };
   }
 
-  private getEndpoint() {
-    const { routingConnection } = this.config;
-    return routingConnection ? `${routingConnection.endpoint}` : `${this.config.url}:${this.config.port}/msg`;
+  private getEndpoint(agency?: Agency) {
+    const connection = agency && agency.connection;
+    return connection ? `${connection.endpoint}` : `${this.config.url}:${this.config.port}/msg`;
   }
 
-  private getRoutingKeys() {
-    const { agencyVerkey, routingConnection } = this.config;
-    return agencyVerkey ? [agencyVerkey] : [];
+  private getRoutingKeys(agency?: Agency) {
+    const verkey = agency && agency.verkey;
+    return verkey ? [verkey] : [];
   }
 }
 
