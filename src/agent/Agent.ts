@@ -90,6 +90,15 @@ class Agent {
 
     if (!inboundPackedMessage['@type']) {
       inboundMessage = await this.wallet.unpack(inboundPackedMessage);
+
+      if (!inboundMessage.message['@type']) {
+        // TODO In this case we assume we got forwarded JWE message (wire message?) to this agent from agency. We should
+        // perhaps try to unpack message in some loop until we have a Aries message in here.
+        logger.logJson('Forwarded message', inboundMessage);
+
+        // @ts-ignore
+        inboundMessage = await this.wallet.unpack(inboundMessage.message);
+      }
     } else {
       inboundMessage = { message: inboundPackedMessage };
     }
@@ -162,9 +171,15 @@ class Agent {
   }
 
   private async sendMessage(outboundMessage: OutboundMessage) {
-    logger.logJson('outboundMessage', outboundMessage);
+    const {
+      connection: { verkey, theirKey },
+      payload,
+    } = outboundMessage;
 
-    const { payload, routingKeys, recipientKeys, senderVk } = outboundMessage;
+    const { routingKeys, recipientKeys, senderVk } = outboundMessage;
+
+    logger.logJson('outboundMessage', { verkey, theirKey, routingKeys, payload });
+
     const outboundPackedMessage = await this.wallet.pack(payload, recipientKeys, senderVk);
 
     let message = outboundPackedMessage;

@@ -41,7 +41,7 @@ export function createBasicMessage(connection: Connection, content: string) {
     endpoint: connection.endpoint,
     payload: basicMessage,
     recipientKeys: [connection.theirKey],
-    routingKeys: [],
+    routingKeys: connection.didDoc.service[0].routingKeys,
     senderVk: connection.verkey,
   };
 

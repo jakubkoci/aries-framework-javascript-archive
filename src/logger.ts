@@ -4,6 +4,6 @@ export default {
     console.log(...args);
   },
   logJson: (message: string, json: {} | null) => {
-    console.log(`${message}\n`, JSON.stringify(json, null, 2), '\n');
+    console.log(`---------- ${message} ---------- \n`, JSON.stringify(json, null, 2), '\n');
   },
 };

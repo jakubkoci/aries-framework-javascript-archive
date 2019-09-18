@@ -100,22 +100,22 @@ describe('with agency', () => {
     expect(bobConnectionAtBobAlice).toBeConnectedWith(aliceConnectionAtAliceBob);
   });
 
-  test.skip('send a message to connection', async () => {
+  test('send a message to connection', async () => {
     const aliceConnections = await aliceAgent.getConnections();
-    console.log(aliceConnections);
+    console.log('aliceConnections', aliceConnections);
 
     const bobConnections = await bobAgent.getConnections();
-    console.log(bobConnections);
+    console.log('bobConnections', bobConnections);
 
     // send message from Alice to Bob
     const message = 'hello, world';
-    await aliceAgent.sendMessageToConnection(aliceConnections[0], message);
+    await aliceAgent.sendMessageToConnection(aliceConnections[1], message);
 
     const bobMessages = await poll(
       () => {
         console.log(`Getting Bob's connection messages...`);
         const connections = bobAgent.getConnections();
-        return connections[0].messages;
+        return connections[1].messages;
       },
       messages => messages.length < 1
     );

@@ -69,10 +69,10 @@ describe('agents', () => {
 
   test('send a message to connection', async () => {
     const aliceConnections = await aliceAgent.getConnections();
-    console.log(aliceConnections);
+    console.log('aliceConnections', aliceConnections);
 
     const bobConnections = await bobAgent.getConnections();
-    console.log(bobConnections);
+    console.log('bobConnections', bobConnections);
 
     // send message from Alice to Bob
     const message = 'hello, world';
