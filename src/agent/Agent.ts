@@ -19,6 +19,9 @@ class Agent {
 
   constructor(config: InitConfig, messageSender: MessageSender) {
     this.config = config;
+
+    logger.logJson('Agent config', config);
+
     this.messageSender = messageSender;
     this.agentConfig = {};
 
@@ -41,7 +44,7 @@ class Agent {
     try {
       const [did, verkey] = await this.wallet.createDid({ did: this.config.did, seed: this.config.didSeed });
       this.agentConfig = { did, verkey };
-      console.log('Agent config', this.agentConfig);
+      logger.logJson('Agent config', this.agentConfig);
     } catch (error) {
       if (error.indyName && error.indyName === 'DidAlreadyExistsError') {
         // This is not a problem, we just reuse it.
@@ -196,7 +199,7 @@ class Agent {
   }
 
   private async createRoute(verkey: Verkey, routingConnection: Connection) {
-    console.log('Creating route...');
+    logger.log('Creating route...');
     const saveRouteMessage = createRouteUpdateMessage(routingConnection, verkey);
     await this.sendMessage(saveRouteMessage);
   }

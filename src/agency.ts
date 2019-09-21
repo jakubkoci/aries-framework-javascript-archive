@@ -9,10 +9,6 @@ class StorageMessageSender {
   messages: { [key: string]: any } = {};
 
   async sendMessage(message: OutboundMessage, connection?: Connection) {
-    // TODO Store message for given connection
-    console.log('Storing message...');
-    console.log(message);
-
     if (connection) {
       if (!connection.theirKey) {
         throw new Error('Trying to save message without theirKey!');
@@ -21,6 +17,8 @@ class StorageMessageSender {
       if (!this.messages[connection.theirKey]) {
         this.messages[connection.theirKey] = [];
       }
+
+      logger.logJson('Storing message', { connection, message });
 
       this.messages[connection.theirKey].push(message);
     }
@@ -61,7 +59,6 @@ app.post('/msg', async (req, res) => {
 });
 
 app.get('/api/connections/:verkey/message', async (req, res) => {
-  // TODO Return first message for connection by their verkey.
   const verkey = req.params.verkey;
   const message = messageSender.takeFirstMessage(verkey);
   res.send(message);

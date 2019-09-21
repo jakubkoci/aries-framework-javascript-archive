@@ -1,13 +1,13 @@
 import { Connection, ConnectionState, InitConfig, Agency } from '../types';
 import { Wallet } from './Wallet';
-import { createInvitation, MessageType } from './messages';
+import { createInvitation } from './messages';
 
 class ConnectionService {
   config: InitConfig;
   wallet: Wallet;
   connections: Connection[] = [];
 
-  constructor(config: any, wallet: Wallet) {
+  constructor(config: InitConfig, wallet: Wallet) {
     this.config = config;
     this.wallet = wallet;
   }

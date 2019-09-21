@@ -1,4 +1,4 @@
-export type InitConfig = {
+export interface InitConfig {
   url: string;
   port: string | number;
   label: string;
@@ -6,14 +6,13 @@ export type InitConfig = {
   walletSeed: string;
   did: Did;
   didSeed: string;
-  routingConnection?: Connection;
   agencyVerkey?: Verkey;
-};
+}
 
-export type AgentConfig = {
+export interface AgentConfig {
   did?: Did;
   verkey?: Verkey;
-};
+}
 
 export enum ConnectionState {
   INIT,
