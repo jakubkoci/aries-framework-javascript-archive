@@ -6,6 +6,8 @@ const { Agent } = require('../agent/Agent');
 const { decodeInvitationFromUrl } = require('../helpers');
 const { toBeConnectedWith } = require('../agent/__tests__/utils');
 
+jest.setTimeout(10000);
+
 expect.extend({ toBeConnectedWith });
 
 const aliceConfig = {

@@ -6,6 +6,8 @@ const { decodeInvitationFromUrl } = require('../../helpers');
 const { poll } = require('../../polling');
 const { toBeConnectedWith } = require('./utils');
 
+jest.setTimeout(10000);
+
 expect.extend({ toBeConnectedWith });
 
 const aliceConfig = {
