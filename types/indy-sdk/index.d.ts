@@ -1,6 +1,8 @@
 declare module 'indy-sdk' {
   function createWallet(config: {}, credentials: {}): Promise<void>;
   function openWallet(config: {}, credentials: {}): Promise<WalletHandle>;
+  function closeWallet(wh: WalletHandle): Promise<void>;
+  function deleteWallet(config: {}, credentials: {}): Promise<void>;
   function createAndStoreMyDid(wh: WalletHandle, credentials: {}): Promise<[Did, Verkey]>;
   function keyForLocalDid(wh: WalletHandle, did: Did): Promise<Verkey>;
   function cryptoAnonCrypt(recipientVk: Verkey, messageRaw: Buffer): Promise<Buffer>;

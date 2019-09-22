@@ -12,14 +12,14 @@ expect.extend({ toBeConnectedWith });
 
 const aliceConfig = {
   label: 'Alice',
-  walletId: 'alice',
-  walletSeed: '00000000000000000000000000000Test01',
+  walletName: 'alice',
+  walletKey: '00000000000000000000000000000Test01',
 };
 
 const bobConfig = {
   label: 'Bob',
-  walletId: 'bob',
-  walletSeed: '00000000000000000000000000000Test02',
+  walletName: 'bob',
+  walletKey: '00000000000000000000000000000Test02',
 };
 
 describe('agents', () => {

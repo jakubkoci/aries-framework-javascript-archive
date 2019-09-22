@@ -2,16 +2,11 @@ export interface InitConfig {
   url: string;
   port: string | number;
   label: string;
-  walletId: string;
-  walletSeed: string;
-  did: Did;
-  didSeed: string;
+  walletName: string;
+  walletKey: string;
+  publicDid: Did;
+  publicDidSeed: string;
   agencyVerkey?: Verkey;
-}
-
-export interface AgentConfig {
-  did?: Did;
-  verkey?: Verkey;
 }
 
 export enum ConnectionState {

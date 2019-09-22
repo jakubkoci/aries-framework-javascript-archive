@@ -1,4 +1,4 @@
-import { Connection, OutboundMessage, InitConfig, AgentConfig, Agency } from '../types';
+import { Connection, OutboundMessage, InitConfig, Agency } from '../types';
 import { IndyWallet, Wallet } from './Wallet';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from '../helpers';
 import logger from '../logger';
@@ -14,20 +14,15 @@ class Agent {
   connectionService: ConnectionService;
   routingService: RoutingService;
   agency?: Agency;
-  agentConfig: AgentConfig;
   handlers: { [key: string]: Handler } = {};
 
   constructor(config: InitConfig, messageSender: MessageSender) {
+    logger.logJson('Creating agent with config', config);
+
     this.config = config;
-
-    logger.logJson('Agent config', config);
-
     this.messageSender = messageSender;
-    this.agentConfig = {};
 
-    const walletConfig = { id: config.walletId };
-    const walletCredentials = { key: config.walletSeed };
-    this.wallet = new IndyWallet(walletConfig, walletCredentials);
+    this.wallet = new IndyWallet({ id: config.walletName }, { key: config.walletKey });
     this.connectionService = new ConnectionService(this.config, this.wallet);
     this.routingService = new RoutingService();
     this.handlers = handlers;
@@ -41,28 +36,14 @@ class Agent {
    * This method will be probably used only when agent is running as routing agency
    */
   async setAgentDid() {
-    try {
-      const [did, verkey] = await this.wallet.createDid({ did: this.config.did, seed: this.config.didSeed });
-      this.agentConfig = { did, verkey };
-      logger.logJson('Agent config', this.agentConfig);
-    } catch (error) {
-      if (error.indyName && error.indyName === 'DidAlreadyExistsError') {
-        // This is not a problem, we just reuse it.
-        logger.log(error.indyName);
-        const did = this.config.did;
-        const verkey = await this.wallet.keyForLocalDid(this.config.did);
-        this.agentConfig = { did, verkey };
-      } else {
-        throw error;
-      }
-    }
+    this.wallet.initPublicDid(this.config.publicDid, this.config.publicDidSeed);
   }
 
   /**
    * This method will be probably used only when agent is running as routing agency
    */
   getAgentDid() {
-    return this.agentConfig;
+    return this.wallet.getPublicDid();
   }
 
   async createInvitationUrl() {

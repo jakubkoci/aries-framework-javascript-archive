@@ -12,14 +12,14 @@ expect.extend({ toBeConnectedWith });
 
 const aliceConfig = {
   label: 'e2e Alice',
-  walletId: 'e2e-alice',
-  walletSeed: '00000000000000000000000000000Test01',
+  walletName: 'e2e-alice',
+  walletKey: '00000000000000000000000000000Test01',
 };
 
 const bobConfig = {
   label: 'e2e Bob',
-  walletId: 'e2e-bob',
-  walletSeed: '00000000000000000000000000000Test02',
+  walletName: 'e2e-bob',
+  walletKey: '00000000000000000000000000000Test02',
 };
 
 describe('with agency', () => {
@@ -27,7 +27,7 @@ describe('with agency', () => {
   let bobAgent;
 
   test('make a connection with agency', async () => {
-    const agencyUrl = `http://localhost:3000`;
+    const agencyUrl = `http://localhost:3001`;
     const aliceAgentSender = new HttpMessageSender(agencyUrl);
     const bobAgentSender = new HttpMessageSender(agencyUrl);
 
