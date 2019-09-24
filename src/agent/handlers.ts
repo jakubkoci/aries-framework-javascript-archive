@@ -1,5 +1,5 @@
 import uuid from 'uuid/v4';
-import { InboundMessage, OutboundMessage, Connection, ConnectionState, Agency } from '../types';
+import { InboundMessage, OutboundMessage, Connection, ConnectionState, Agency } from './types';
 import { ConnectionService } from './ConnectionService';
 import { Wallet } from './Wallet';
 import { MessageType } from './messages';

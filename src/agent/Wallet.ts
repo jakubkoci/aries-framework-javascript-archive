@@ -1,7 +1,7 @@
 import indy from 'indy-sdk';
 import logger from '../logger';
-import { InboundMessage, Message } from '../types';
-import { sign } from '../decorators';
+import { InboundMessage, Message } from './types';
+import { sign } from './decorators';
 
 interface Wallet {
   init(): Promise<void>;
@@ -70,9 +70,9 @@ class IndyWallet implements Wallet {
         verkey: existingVerkey,
       };
     } catch (error) {
-      logger.log(error);
       if (error.name === 'IndyError' && error.message === '212') {
         // WalletItemNotFound
+        logger.log('WalletItemNotFound');
         const [_, verkey] = await this.createDid({ did, seed });
         didInfo = {
           did,

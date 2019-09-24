@@ -1,4 +1,4 @@
-import { Connection } from '../types';
+import { Connection } from './types';
 
 class RoutingService {
   routingTable: { [recipientKey: string]: Connection } = {};

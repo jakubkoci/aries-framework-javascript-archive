@@ -3,7 +3,7 @@
 const { get, post } = require('../http');
 const { poll } = require('../polling');
 const { Agent } = require('../agent/Agent');
-const { decodeInvitationFromUrl } = require('../helpers');
+const { decodeInvitationFromUrl } = require('../agent/helpers');
 const { toBeConnectedWith } = require('../agent/__tests__/utils');
 
 jest.setTimeout(10000);

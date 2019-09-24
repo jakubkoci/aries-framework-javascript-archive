@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Subject } = require('rxjs');
 const { Agent } = require('../Agent');
-const { decodeInvitationFromUrl } = require('../../helpers');
+const { decodeInvitationFromUrl } = require('../../agent/helpers');
 const { poll } = require('../../polling');
 const { toBeConnectedWith } = require('./utils');
 

@@ -1,11 +1,11 @@
-import { Connection, OutboundMessage, InitConfig, Agency } from '../types';
-import { IndyWallet, Wallet } from './Wallet';
-import { encodeInvitationToUrl, decodeInvitationFromUrl } from '../helpers';
 import logger from '../logger';
+import { Connection, OutboundMessage, InitConfig, Agency } from './types';
+import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
+import { IndyWallet, Wallet } from './Wallet';
 import { ConnectionService } from './ConnectionService';
+import { RoutingService } from './RoutingService';
 import { Handler, handlers } from './handlers';
 import { createForwardMessage, createBasicMessage, MessageType, createRouteUpdateMessage } from './messages';
-import { RoutingService } from './RoutingService';
 
 class Agent {
   config: InitConfig;

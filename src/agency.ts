@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import config from './config';
 import logger from './logger';
 import { Agent } from './agent/Agent';
-import { OutboundMessage, Connection } from './types';
+import { OutboundMessage, Connection } from './agent/types';
 
 class StorageMessageSender {
   messages: { [key: string]: any } = {};

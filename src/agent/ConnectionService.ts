@@ -1,4 +1,4 @@
-import { Connection, ConnectionState, InitConfig, Agency } from '../types';
+import { Connection, ConnectionState, InitConfig, Agency } from './types';
 import { Wallet } from './Wallet';
 import { createInvitation } from './messages';
 
