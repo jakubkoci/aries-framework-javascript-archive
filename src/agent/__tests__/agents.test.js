@@ -30,8 +30,8 @@ describe('agents', () => {
     const aliceMessages = new Subject();
     const bobMessages = new Subject();
 
-    const aliceAgentSender = new ArrayMessageSender(bobMessages);
-    const bobAgentSender = new ArrayMessageSender(aliceMessages);
+    const aliceAgentSender = new SubjectMessageSender(bobMessages);
+    const bobAgentSender = new SubjectMessageSender(aliceMessages);
 
     aliceAgent = new Agent(aliceConfig, aliceAgentSender);
     await aliceAgent.init();
@@ -93,13 +93,7 @@ describe('agents', () => {
   });
 });
 
-function subscribe(agent, subject) {
-  subject.subscribe({
-    next: message => agent.receiveMessage(message),
-  });
-}
-
-class ArrayMessageSender {
+class SubjectMessageSender {
   constructor(subject) {
     this.subject = subject;
   }
@@ -109,4 +103,10 @@ class ArrayMessageSender {
     console.log(message);
     this.subject.next(message);
   }
+}
+
+function subscribe(agent, subject) {
+  subject.subscribe({
+    next: message => agent.receiveMessage(message),
+  });
 }
