@@ -1,5 +1,5 @@
-import { Connection, ConnectionState, InitConfig, Agency } from './types';
-import { Wallet } from './Wallet';
+import { Connection, ConnectionState, InitConfig, Agency } from '../../types';
+import { Wallet } from '../../Wallet';
 import { createInvitation } from './messages';
 
 class ConnectionService {
