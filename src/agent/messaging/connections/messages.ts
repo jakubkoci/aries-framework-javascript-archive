@@ -1,5 +1,5 @@
 import uuid from 'uuid/v4';
-import { InvitationDetails, Connection, ConnectionState } from '../../types';
+import { InvitationDetails, Connection } from '../../types';
 
 export enum MessageType {
   ConnectionInvitation = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0/invitation',
@@ -8,8 +8,13 @@ export enum MessageType {
   Ack = 'did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/notification/1.0/ack',
 }
 
-export async function createInvitation({ label, serviceEndpoint, recipientKeys, routingKeys }: InvitationDetails) {
-  const invitation = {
+export async function createInvitationMessage({
+  label,
+  serviceEndpoint,
+  recipientKeys,
+  routingKeys,
+}: InvitationDetails) {
+  return {
     '@type': MessageType.ConnectionInvitation,
     '@id': uuid(),
     label,
@@ -17,11 +22,10 @@ export async function createInvitation({ label, serviceEndpoint, recipientKeys, 
     serviceEndpoint,
     routingKeys,
   };
-  return invitation;
 }
 
-export function createConnectionRequestMessage(connection: Connection, invitation: any, label: string) {
-  const connectionRequest = {
+export function createConnectionRequestMessage(connection: Connection, label: string) {
+  return {
     '@type': MessageType.ConnectionRequest,
     '@id': uuid(),
     label: label,
@@ -30,17 +34,29 @@ export function createConnectionRequestMessage(connection: Connection, invitatio
       did_doc: connection.didDoc,
     },
   };
+}
 
-  connection.state = ConnectionState.REQUESTED;
-
-  const outboundMessage = {
-    connection,
-    endpoint: invitation.serviceEndpoint,
-    payload: connectionRequest,
-    recipientKeys: invitation.recipientKeys,
-    routingKeys: invitation.routingKeys,
-    senderVk: null,
+export function createConnectionResponseMessage(connection: Connection, thid: string) {
+  return {
+    '@type': MessageType.ConnectionResposne,
+    '@id': uuid(),
+    '~thread': {
+      thid,
+    },
+    connection: {
+      did: connection.did,
+      did_doc: connection.didDoc,
+    },
   };
+}
 
-  return outboundMessage;
+export function createAckMessage(thid: string) {
+  return {
+    '@type': MessageType.Ack,
+    '@id': uuid(),
+    status: 'OK',
+    '~thread': {
+      thid: thid,
+    },
+  };
 }

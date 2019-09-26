@@ -1,6 +1,5 @@
-import uuid from 'uuid/v4';
 import { InboundMessage } from '../../types';
-import { MessageType } from '../connections/messages';
+import { createAckMessage } from '../connections/messages';
 import { ConnectionService } from '../connections/ConnectionService';
 import { Context } from '../interface';
 
@@ -15,14 +14,7 @@ export function handleBasicMessage(connectionService: ConnectionService) {
 
     connection.messages.push(message);
 
-    const response = {
-      '@type': MessageType.Ack,
-      '@id': uuid(),
-      status: 'OK',
-      '~thread': {
-        thid: message['@id'],
-      },
-    };
+    const response = createAckMessage(message['@id']);
 
     if (!connection.endpoint) {
       throw new Error('Invalid connection endpoint');

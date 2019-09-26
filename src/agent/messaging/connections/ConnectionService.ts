@@ -1,6 +1,6 @@
 import { Connection, ConnectionState, InitConfig, Agency } from '../../types';
 import { Wallet } from '../../Wallet';
-import { createInvitation } from './messages';
+import { createInvitationMessage } from './messages';
 
 class ConnectionService {
   config: InitConfig;
@@ -15,7 +15,7 @@ class ConnectionService {
   async createConnectionWithInvitation(agency?: Agency): Promise<Connection> {
     const connection = await this.createConnection(agency);
     const invitationDetails = this.getInvitationDetails(connection, agency);
-    const invitation = await createInvitation(invitationDetails);
+    const invitation = await createInvitationMessage(invitationDetails);
     connection.state = ConnectionState.INVITED;
     connection.invitation = invitation;
     return connection;

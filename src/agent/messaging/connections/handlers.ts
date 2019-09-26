@@ -1,7 +1,6 @@
-import uuid from 'uuid/v4';
-import { InboundMessage, OutboundMessage, Connection, ConnectionState, Agency } from '../../types';
+import { InboundMessage, ConnectionState } from '../../types';
 import { ConnectionService } from './ConnectionService';
-import { createConnectionRequestMessage, MessageType } from './messages';
+import { createConnectionRequestMessage, createAckMessage, createConnectionResponseMessage } from './messages';
 import { Context } from '../interface';
 
 export function handleInvitation(connectionService: ConnectionService) {
@@ -9,7 +8,20 @@ export function handleInvitation(connectionService: ConnectionService) {
     const { config, agency } = context;
     const invitation = inboundMessage.message;
     const connection = await connectionService.createConnection(agency);
-    return createConnectionRequestMessage(connection, invitation, config.label);
+    const connectionRequest = createConnectionRequestMessage(connection, config.label);
+
+    connection.state = ConnectionState.REQUESTED;
+
+    const outboundMessage = {
+      connection,
+      endpoint: invitation.serviceEndpoint,
+      payload: connectionRequest,
+      recipientKeys: invitation.recipientKeys,
+      routingKeys: invitation.routingKeys,
+      senderVk: null,
+    };
+
+    return outboundMessage;
   };
 }
 
@@ -37,17 +49,7 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
       throw new Error('Missing verkey in connection request!');
     }
 
-    const connectionResponse = {
-      '@type': MessageType.ConnectionResposne,
-      '@id': uuid(),
-      '~thread': {
-        thid: message['@id'],
-      },
-      connection: {
-        did: connection.did,
-        did_doc: connection.didDoc,
-      },
-    };
+    const connectionResponse = createConnectionResponseMessage(connection, message['@id']);
 
     const signedConnectionResponse = await wallet.sign(connectionResponse, 'connection', connection.verkey);
 
@@ -103,14 +105,7 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
     connection.theirKey = connectionReponse.did_doc.service[0].recipientKeys[0];
     connection.endpoint = connectionReponse.did_doc.service[0].serviceEndpoint;
 
-    const response = {
-      '@type': MessageType.Ack,
-      '@id': uuid(),
-      status: 'OK',
-      '~thread': {
-        thid: message['@id'],
-      },
-    };
+    const response = createAckMessage(message['@id']);
 
     if (!connection.endpoint) {
       throw new Error('Invalid connection endpoint');

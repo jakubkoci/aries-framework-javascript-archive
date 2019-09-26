@@ -133,8 +133,24 @@ class Agent {
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {
-    const basicMessage = createBasicMessage(connection, message);
-    await this.sendMessage(basicMessage);
+    // TODO I don't like so much logic in here. It would be probably better to put it into some service. It could be
+    // possible to execute it by some handler, but handler is currently only for processing inbound messages.
+
+    const basicMessage = createBasicMessage(message);
+    if (!connection.endpoint || !connection.theirKey) {
+      throw new Error('Invalid connection endpoint');
+    }
+
+    const outboundMessage = {
+      connection,
+      endpoint: connection.endpoint,
+      payload: basicMessage,
+      recipientKeys: [connection.theirKey],
+      routingKeys: connection.didDoc.service[0].routingKeys,
+      senderVk: connection.verkey,
+    };
+
+    await this.sendMessage(outboundMessage);
   }
 
   private async dispatch(inboundMessage: any): Promise<OutboundMessage | null> {
@@ -195,9 +211,26 @@ class Agent {
   }
 
   private async createRoute(verkey: Verkey, routingConnection: Connection) {
+    // TODO I don't like so much logic in here. It would be probably better to put it into some service. It could be
+    // possible to execute it by some handler, but handler is currently only for processing inbound messages.
+
     logger.log('Creating route...');
-    const saveRouteMessage = createRouteUpdateMessage(routingConnection, verkey);
-    await this.sendMessage(saveRouteMessage);
+    const routeUpdateMessage = createRouteUpdateMessage(verkey);
+
+    if (!routingConnection.endpoint || !routingConnection.theirKey) {
+      throw new Error('Invalid connection endpoint');
+    }
+
+    const outboundMessage = {
+      connection: routingConnection,
+      endpoint: routingConnection.endpoint,
+      payload: routeUpdateMessage,
+      recipientKeys: [routingConnection.theirKey],
+      routingKeys: [],
+      senderVk: routingConnection.verkey,
+    };
+
+    await this.sendMessage(outboundMessage);
   }
 
   private registerHandlers() {
