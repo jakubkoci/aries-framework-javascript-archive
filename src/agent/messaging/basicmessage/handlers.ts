@@ -25,7 +25,7 @@ export function handleBasicMessage(connectionService: ConnectionService) {
       endpoint: connection.endpoint,
       payload: response,
       recipientKeys: [sender_verkey],
-      routingKeys: connection.didDoc.service[0].routingKeys,
+      routingKeys: connection.theirRoutingKeys || [],
       senderVk: connection.verkey,
     };
 

@@ -3,25 +3,29 @@ import bodyParser from 'body-parser';
 import config from './config';
 import logger from './logger';
 import { Agent } from './agent/Agent';
-import { OutboundMessage, Connection } from './agent/types';
+import { OutboundMessage } from './agent/types';
 
 class StorageMessageSender {
   messages: { [key: string]: any } = {};
 
-  async sendMessage(message: OutboundMessage, connection?: Connection) {
-    if (connection) {
-      if (!connection.theirKey) {
-        throw new Error('Trying to save message without theirKey!');
-      }
+  async sendMessage(message: OutboundMessage, outboundMessage?: OutboundMessage) {
+    const connection = outboundMessage && outboundMessage.connection;
 
-      if (!this.messages[connection.theirKey]) {
-        this.messages[connection.theirKey] = [];
-      }
-
-      logger.logJson('Storing message', { connection, message });
-
-      this.messages[connection.theirKey].push(message);
+    if (!connection) {
+      throw new Error(`Missing connection. I don't know how and where to send the message.`);
     }
+
+    if (!connection.theirKey) {
+      throw new Error('Trying to save message without theirKey!');
+    }
+
+    if (!this.messages[connection.theirKey]) {
+      this.messages[connection.theirKey] = [];
+    }
+
+    logger.logJson('Storing message', { connection, message });
+
+    this.messages[connection.theirKey].push(message);
   }
 
   takeFirstMessage(verkey: Verkey) {
@@ -39,6 +43,7 @@ const messageSender = new StorageMessageSender();
 const agent = new Agent(config, messageSender);
 
 app.use(bodyParser.text());
+app.set('json spaces', 2);
 
 app.get('/', async (req, res) => {
   const agentDid = agent.getAgentDid();
@@ -74,7 +79,7 @@ app.get('/api/connections/:verkey', async (req, res) => {
 app.get('/api/connections', async (req, res) => {
   // TODO This endpoint is for testing purpose only. Return agency connection by their verkey.
   const connections = agent.getConnections();
-  res.send(connections);
+  res.json(connections);
 });
 
 app.get('/api/routes', async (req, res) => {

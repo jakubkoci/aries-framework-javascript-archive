@@ -27,9 +27,10 @@ describe('with agency', () => {
   let bobAgent;
 
   test('make a connection with agency', async () => {
-    const agencyUrl = `http://localhost:3001`;
-    const aliceAgentSender = new HttpMessageSender(agencyUrl);
-    const bobAgentSender = new HttpMessageSender(agencyUrl);
+    const aliceAgencyUrl = `http://localhost:3001`;
+    const bobAgencyUrl = `http://localhost:3002`;
+    const aliceAgentSender = new HttpMessageSender();
+    const bobAgentSender = new HttpMessageSender();
 
     aliceAgent = new Agent(aliceConfig, aliceAgentSender);
     await aliceAgent.init();
@@ -37,14 +38,14 @@ describe('with agency', () => {
     bobAgent = new Agent(bobConfig, bobAgentSender);
     await bobAgent.init();
 
-    const aliceAgencyInvitationUrl = await get(`${agencyUrl}/invitation`);
+    const aliceAgencyInvitationUrl = await get(`${aliceAgencyUrl}/invitation`);
     const aliceKeyAtAliceAgency = await aliceAgent.acceptInvitationUrl(aliceAgencyInvitationUrl);
 
-    const bobAgencyInvitationUrl = await get(`${agencyUrl}/invitation`);
+    const bobAgencyInvitationUrl = await get(`${bobAgencyUrl}/invitation`);
     const bobKeyAtBobAgency = await bobAgent.acceptInvitationUrl(bobAgencyInvitationUrl);
 
-    pollMessages(aliceAgent, agencyUrl, aliceKeyAtAliceAgency);
-    pollMessages(bobAgent, agencyUrl, bobKeyAtBobAgency);
+    pollMessages(aliceAgent, aliceAgencyUrl, aliceKeyAtAliceAgency);
+    pollMessages(bobAgent, bobAgencyUrl, bobKeyAtBobAgency);
 
     const aliceConnectionAtAliceAgency = await poll(
       () => aliceAgent.findConnectionByMyKey(aliceKeyAtAliceAgency),
@@ -60,15 +61,16 @@ describe('with agency', () => {
     );
     console.log('bobConnectionAtBobAgency\n', bobConnectionAtBobAgency);
 
-    // TODO This endpoint currently exists at agency only for the testing purpose. It returns agency part of the pairwise connection.
+    // TODO This endpoint currently exists at agency only for the testing purpose. It returns agency's part of the pairwise connection.
     const agencyConnectionAtAliceAgency = JSON.parse(
-      await get(`${agencyUrl}/api/connections/${aliceKeyAtAliceAgency}`)
+      await get(`${aliceAgencyUrl}/api/connections/${aliceKeyAtAliceAgency}`)
     );
-    const agencyConnectionAtBobAgency = JSON.parse(await get(`${agencyUrl}/api/connections/${bobKeyAtBobAgency}`));
+    const agencyConnectionAtBobAgency = JSON.parse(await get(`${bobAgencyUrl}/api/connections/${bobKeyAtBobAgency}`));
 
-    const { verkey: agencyVerkey } = JSON.parse(await get(`${agencyUrl}/`));
-    aliceAgent.setAgency(agencyVerkey, aliceConnectionAtAliceAgency);
-    bobAgent.setAgency(agencyVerkey, bobConnectionAtBobAgency);
+    const { verkey: aliceAgencyVerkey } = JSON.parse(await get(`${aliceAgencyUrl}/`));
+    const { verkey: bobAgencyVerkey } = JSON.parse(await get(`${bobAgencyUrl}/`));
+    aliceAgent.setAgency(aliceAgencyVerkey, aliceConnectionAtAliceAgency);
+    bobAgent.setAgency(bobAgencyVerkey, bobConnectionAtBobAgency);
 
     expect(aliceConnectionAtAliceAgency).toBeConnectedWith(agencyConnectionAtAliceAgency);
     expect(bobConnectionAtBobAgency).toBeConnectedWith(agencyConnectionAtBobAgency);
@@ -104,10 +106,10 @@ describe('with agency', () => {
 
   test('send a message to connection', async () => {
     const aliceConnections = await aliceAgent.getConnections();
-    console.log('aliceConnections', aliceConnections);
-
+    console.log('aliceConnections', JSON.stringify(aliceConnections, null, 2));
+    
     const bobConnections = await bobAgent.getConnections();
-    console.log('bobConnections', bobConnections);
+    console.log('bobConnections', JSON.stringify(bobConnections, null, 2));
 
     // send message from Alice to Bob
     const message = 'hello, world';
@@ -140,13 +142,15 @@ function pollMessages(agent, agencyUrl, verkey) {
 }
 
 class HttpMessageSender {
-  constructor(endpoint) {
-    this.endpoint = endpoint;
-  }
+  async sendMessage(message, outboundMessage) {
+    const endpoint = outboundMessage && outboundMessage.endpoint
+    
+    if (!endpoint) {
+      throw new Error(`Missing endpoint. I don't know how and where to send the message.`);
+    }
 
-  async sendMessage(message) {
     console.log('Sending message...');
     console.log(message);
-    await post(`${this.endpoint}/msg`, JSON.stringify(message));
+    await post(`${endpoint}`, JSON.stringify(message));
   }
 }
