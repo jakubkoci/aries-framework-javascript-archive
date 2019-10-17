@@ -146,7 +146,7 @@ class Agent {
       endpoint: connection.endpoint,
       payload: basicMessage,
       recipientKeys: [connection.theirKey],
-      routingKeys: connection.didDoc.service[0].routingKeys,
+      routingKeys: connection.theirRoutingKeys || [],
       senderVk: connection.verkey,
     };
 
@@ -187,13 +187,14 @@ class Agent {
 
   private async sendMessage(outboundMessage: OutboundMessage) {
     const {
-      connection: { verkey, theirKey },
+      connection: { verkey, theirKey, endpoint },
+      routingKeys,
+      recipientKeys,
+      senderVk,
       payload,
     } = outboundMessage;
 
-    const { routingKeys, recipientKeys, senderVk } = outboundMessage;
-
-    logger.logJson('outboundMessage', { verkey, theirKey, routingKeys, payload });
+    logger.logJson('outboundMessage', { verkey, theirKey, routingKeys, endpoint, payload });
 
     const outboundPackedMessage = await this.wallet.pack(payload, recipientKeys, senderVk);
 
@@ -207,7 +208,7 @@ class Agent {
       }
     }
 
-    this.messageSender.sendMessage(message, outboundMessage.connection);
+    this.messageSender.sendMessage(message, outboundMessage);
   }
 
   private async createRoute(verkey: Verkey, routingConnection: Connection) {
@@ -248,8 +249,11 @@ class Agent {
   }
 }
 
+type $FixMe = any;
+type WireMessage = $FixMe;
+
 interface MessageSender {
-  sendMessage(message: any, connection?: Connection): any;
+  sendMessage(message: WireMessage, outboundMessage?: OutboundMessage): any;
 }
 
 export { Agent };

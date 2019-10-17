@@ -23,6 +23,7 @@ export interface Connection {
   verkey: Verkey;
   theirDid?: Did;
   theirKey?: Verkey;
+  theirRoutingKeys?: Verkey[];
   invitation?: ConnectionInvitation;
   state: ConnectionState;
   endpoint?: string;

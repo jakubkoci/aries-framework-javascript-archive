@@ -44,6 +44,7 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
     connection.theirDid = connectionRequest.connection.did;
     connection.theirKey = connectionRequest.connection.did_doc.service[0].recipientKeys[0];
     connection.endpoint = connectionRequest.connection.did_doc.service[0].serviceEndpoint;
+    connection.theirRoutingKeys = connectionRequest.connection.did_doc.service[0].routingKeys;
 
     if (!connection.theirKey) {
       throw new Error('Missing verkey in connection request!');
@@ -64,7 +65,7 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
       endpoint: connection.endpoint,
       payload: signedConnectionResponse,
       recipientKeys: [connection.theirKey],
-      routingKeys: connection.didDoc.service[0].routingKeys,
+      routingKeys: connection.theirRoutingKeys || [],
       senderVk: connection.verkey,
     };
 
@@ -104,6 +105,7 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
     connection.theirDid = connectionReponse.did;
     connection.theirKey = connectionReponse.did_doc.service[0].recipientKeys[0];
     connection.endpoint = connectionReponse.did_doc.service[0].serviceEndpoint;
+    connection.theirRoutingKeys = connectionReponse.did_doc.service[0].routingKeys;
 
     const response = createAckMessage(message['@id']);
 
@@ -118,7 +120,7 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
       endpoint: connection.endpoint,
       payload: response,
       recipientKeys: [sender_verkey],
-      routingKeys: connection.didDoc.service[0].routingKeys,
+      routingKeys: connection.theirRoutingKeys || [],
       senderVk: connection.verkey,
     };
     return outboundMessage;
