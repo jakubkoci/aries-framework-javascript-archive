@@ -20,6 +20,7 @@ import {
 } from './messaging/routing/messages';
 import { RoutingService } from './messaging/routing/RoutingService';
 import { Handler } from './messaging/interface';
+import { createOutboundMessage } from './messaging/helpers';
 
 class Agent {
   config: InitConfig;
@@ -137,19 +138,7 @@ class Agent {
     // possible to execute it by some handler, but handler is currently only for processing inbound messages.
 
     const basicMessage = createBasicMessage(message);
-    if (!connection.endpoint || !connection.theirKey) {
-      throw new Error('Invalid connection endpoint');
-    }
-
-    const outboundMessage = {
-      connection,
-      endpoint: connection.endpoint,
-      payload: basicMessage,
-      recipientKeys: [connection.theirKey],
-      routingKeys: connection.theirRoutingKeys || [],
-      senderVk: connection.verkey,
-    };
-
+    const outboundMessage = createOutboundMessage(connection, basicMessage);
     await this.sendMessage(outboundMessage);
   }
 
@@ -218,19 +207,7 @@ class Agent {
     logger.log('Creating route...');
     const routeUpdateMessage = createRouteUpdateMessage(verkey);
 
-    if (!routingConnection.endpoint || !routingConnection.theirKey) {
-      throw new Error('Invalid connection endpoint');
-    }
-
-    const outboundMessage = {
-      connection: routingConnection,
-      endpoint: routingConnection.endpoint,
-      payload: routeUpdateMessage,
-      recipientKeys: [routingConnection.theirKey],
-      routingKeys: [],
-      senderVk: routingConnection.verkey,
-    };
-
+    const outboundMessage = createOutboundMessage(routingConnection, routeUpdateMessage);
     await this.sendMessage(outboundMessage);
   }
 

@@ -1,7 +1,8 @@
-import { InboundMessage, ConnectionState } from '../../types';
+import { InboundMessage, ConnectionState, Connection, Message, InvitationDetails } from '../../types';
 import { ConnectionService } from './ConnectionService';
 import { createConnectionRequestMessage, createAckMessage, createConnectionResponseMessage } from './messages';
 import { Context } from '../interface';
+import { createOutboundMessage } from '../helpers';
 
 export function handleInvitation(connectionService: ConnectionService) {
   return async (inboundMessage: InboundMessage, context: Context) => {
@@ -12,16 +13,7 @@ export function handleInvitation(connectionService: ConnectionService) {
 
     connection.state = ConnectionState.REQUESTED;
 
-    const outboundMessage = {
-      connection,
-      endpoint: invitation.serviceEndpoint,
-      payload: connectionRequest,
-      recipientKeys: invitation.recipientKeys,
-      routingKeys: invitation.routingKeys,
-      senderVk: null,
-    };
-
-    return outboundMessage;
+    return createOutboundMessage(connection, connectionRequest, invitation);
   };
 }
 
@@ -35,6 +27,16 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
       throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
     }
 
+    // TODO I have 2 questions
+    // 1. I don't know whether following check is necessary.
+    // 2. I don't know whether to use `connection.theirKey` or `sender_verkey` for outbound message.
+    //
+    // This problem in other handlers is handled just by checking existance of attribute `connection.theirKey`
+    // and omitting `sender_key` from any usage.
+    if (sender_verkey !== connection.theirKey) {
+      throw new Error('Inbound message `sender_key` attribute is different from connection.theirKey');
+    }
+
     if (!message.connection) {
       throw new Error('Invalid message');
     }
@@ -42,9 +44,9 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
     const connectionRequest = message;
 
     connection.theirDid = connectionRequest.connection.did;
-    connection.theirKey = connectionRequest.connection.did_doc.service[0].recipientKeys[0];
-    connection.endpoint = connectionRequest.connection.did_doc.service[0].serviceEndpoint;
-    connection.theirRoutingKeys = connectionRequest.connection.did_doc.service[0].routingKeys;
+    connection.theirDidDoc = connectionRequest.connection.did_doc;
+    // Keep also theirKey for debug reasons
+    connection.theirKey = connection.theirDidDoc.service[0].recipientKeys[0];
 
     if (!connection.theirKey) {
       throw new Error('Missing verkey in connection request!');
@@ -54,22 +56,9 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
 
     const signedConnectionResponse = await wallet.sign(connectionResponse, 'connection', connection.verkey);
 
-    if (!connection.endpoint) {
-      throw new Error('Invalid connection endpoint');
-    }
-
     connection.state = ConnectionState.RESPONDED;
 
-    const outboundMessage = {
-      connection,
-      endpoint: connection.endpoint,
-      payload: signedConnectionResponse,
-      recipientKeys: [connection.theirKey],
-      routingKeys: connection.theirRoutingKeys || [],
-      senderVk: connection.verkey,
-    };
-
-    return outboundMessage;
+    return createOutboundMessage(connection, signedConnectionResponse);
   };
 }
 
@@ -103,27 +92,19 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
     }
 
     connection.theirDid = connectionReponse.did;
-    connection.theirKey = connectionReponse.did_doc.service[0].recipientKeys[0];
-    connection.endpoint = connectionReponse.did_doc.service[0].serviceEndpoint;
-    connection.theirRoutingKeys = connectionReponse.did_doc.service[0].routingKeys;
+    connection.theirDidDoc = connectionReponse.did_doc;
+    // Keep also theirKey for debug reasons
+    connection.theirKey = connection.theirDidDoc.service[0].recipientKeys[0];
+
+    if (!connection.theirKey) {
+      throw new Error(`Connection with verkey ${connection.verkey} has no recipient keys.`);
+    }
 
     const response = createAckMessage(message['@id']);
 
-    if (!connection.endpoint) {
-      throw new Error('Invalid connection endpoint');
-    }
-
     connection.state = ConnectionState.COMPLETE;
 
-    const outboundMessage = {
-      connection,
-      endpoint: connection.endpoint,
-      payload: response,
-      recipientKeys: [sender_verkey],
-      routingKeys: connection.theirRoutingKeys || [],
-      senderVk: connection.verkey,
-    };
-    return outboundMessage;
+    return createOutboundMessage(connection, response);
   };
 }
 

@@ -74,7 +74,8 @@ class ConnectionService {
 
   private getEndpoint(agency?: Agency) {
     const connection = agency && agency.connection;
-    return connection ? `${connection.endpoint}` : `${this.config.url}:${this.config.port}/msg`;
+    const endpoint = connection && connection.theirDidDoc && connection.theirDidDoc.service[0].serviceEndpoint;
+    return endpoint ? `${endpoint}` : `${this.config.url}:${this.config.port}/msg`;
   }
 
   private getRoutingKeys(agency?: Agency) {
