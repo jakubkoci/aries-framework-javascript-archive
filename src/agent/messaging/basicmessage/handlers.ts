@@ -2,6 +2,7 @@ import { InboundMessage } from '../../types';
 import { createAckMessage } from '../connections/messages';
 import { ConnectionService } from '../connections/ConnectionService';
 import { Context } from '../interface';
+import { createOutboundMessage } from '../helpers';
 
 export function handleBasicMessage(connectionService: ConnectionService) {
   return async (inboundMessage: InboundMessage, context: Context) => {
@@ -12,23 +13,14 @@ export function handleBasicMessage(connectionService: ConnectionService) {
       throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
     }
 
+    if (!connection.theirKey) {
+      throw new Error(`Connection with verkey ${connection.verkey} has no recipient keys.`);
+    }
+
     connection.messages.push(message);
 
     const response = createAckMessage(message['@id']);
 
-    if (!connection.endpoint) {
-      throw new Error('Invalid connection endpoint');
-    }
-
-    const outboundMessage = {
-      connection,
-      endpoint: connection.endpoint,
-      payload: response,
-      recipientKeys: [sender_verkey],
-      routingKeys: connection.theirRoutingKeys || [],
-      senderVk: connection.verkey,
-    };
-
-    return outboundMessage;
+    return createOutboundMessage(connection, response);
   };
 }

@@ -23,16 +23,11 @@ export interface Connection {
   verkey: Verkey;
   theirDid?: Did;
   theirKey?: Verkey;
-  theirRoutingKeys?: Verkey[];
-  invitation?: ConnectionInvitation;
+  theirDidDoc?: any;
+  invitation?: InvitationDetails;
   state: ConnectionState;
   endpoint?: string;
   messages: any[];
-}
-
-export interface ConnectionInvitation {
-  serviceEndpoint: string;
-  recipientKeys: string[];
 }
 
 export interface InvitationDetails {

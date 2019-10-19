@@ -2,6 +2,7 @@ import { InboundMessage } from '../../types';
 import { ConnectionService } from '../connections/ConnectionService';
 import { RoutingService } from './RoutingService';
 import { Context } from '../interface';
+import { createOutboundMessage } from '../helpers';
 
 type RouteUpdate = {
   action: 'add' | 'remove';
@@ -50,15 +51,6 @@ export function handleForwardMessage(routingService: RoutingService) {
       throw new Error(`Connection with verkey ${connection.verkey} has no recipient keys.`);
     }
 
-    const outboundMessage = {
-      connection,
-      endpoint: connection.endpoint,
-      payload: msg,
-      recipientKeys: [connection.theirKey],
-      routingKeys: connection.didDoc.service[0].routingKeys,
-      senderVk: connection.verkey,
-    };
-
-    return outboundMessage;
+    return createOutboundMessage(connection, msg);
   };
 }
