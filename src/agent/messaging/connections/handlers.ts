@@ -1,4 +1,4 @@
-import { InboundMessage, ConnectionState, Connection, Message, InvitationDetails } from '../../types';
+import { InboundMessage, ConnectionState } from '../../types';
 import { ConnectionService } from './ConnectionService';
 import { createConnectionRequestMessage, createAckMessage, createConnectionResponseMessage } from './messages';
 import { Context } from '../interface';

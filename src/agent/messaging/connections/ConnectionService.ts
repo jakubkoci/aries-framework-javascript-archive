@@ -14,7 +14,7 @@ class ConnectionService {
 
   async createConnectionWithInvitation(agency?: Agency): Promise<Connection> {
     const connection = await this.createConnection(agency);
-    const invitationDetails = this.getInvitationDetails(connection, agency);
+    const invitationDetails = this.createInvitationDetails(this.config, connection);
     const invitation = await createInvitationMessage(invitationDetails);
     connection.state = ConnectionState.INVITED;
     connection.invitation = invitation;
@@ -62,13 +62,13 @@ class ConnectionService {
     return this.connections.find(connection => connection.theirKey === verkey);
   }
 
-  private getInvitationDetails(connection: Connection, agency?: Agency) {
-    const { verkey } = connection;
+  private createInvitationDetails(config: InitConfig, connection: Connection) {
+    const { didDoc } = connection;
     return {
-      label: this.config.label,
-      recipientKeys: [verkey],
-      serviceEndpoint: this.getEndpoint(agency),
-      routingKeys: this.getRoutingKeys(agency),
+      label: config.label,
+      recipientKeys: didDoc.service[0].recipientKeys,
+      serviceEndpoint: didDoc.service[0].serviceEndpoint,
+      routingKeys: didDoc.service[0].routingKeys,
     };
   }
 

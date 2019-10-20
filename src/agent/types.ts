@@ -32,8 +32,8 @@ export interface Connection {
 
 export interface InvitationDetails {
   label: string;
-  serviceEndpoint: string;
   recipientKeys: Verkey[];
+  serviceEndpoint: string;
   routingKeys: Verkey[];
 }
 
@@ -43,6 +43,8 @@ export interface DidDoc {
 }
 
 interface Service {
+  serviceEndpoint: string;
+  recipientKeys: Verkey[];
   routingKeys: Verkey[];
 }
 
