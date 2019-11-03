@@ -107,7 +107,7 @@ describe('with agency', () => {
   test('send a message to connection', async () => {
     const aliceConnections = await aliceAgent.getConnections();
     console.log('aliceConnections', JSON.stringify(aliceConnections, null, 2));
-    
+
     const bobConnections = await bobAgent.getConnections();
     console.log('bobConnections', JSON.stringify(bobConnections, null, 2));
 
@@ -143,8 +143,8 @@ function pollMessages(agent, agencyUrl, verkey) {
 
 class HttpMessageSender {
   async sendMessage(message, outboundMessage) {
-    const endpoint = outboundMessage && outboundMessage.endpoint
-    
+    const endpoint = outboundMessage && outboundMessage.endpoint;
+
     if (!endpoint) {
       throw new Error(`Missing endpoint. I don't know how and where to send the message.`);
     }

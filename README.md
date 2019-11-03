@@ -21,26 +21,40 @@ yarn
 
 # Running tests
 
-Start agency
+## Run e2e tests with in memory messaging
+
+You don't have to start agencies for these tests. Communication is done via RxJS subscriptions.
+
+```
+yarn test -t "agents"
+```
+
+## Run e2e tests with HTTP based routing agencies
+
+You have to start agencies first.
+
+Open terminal and start Alice's agency:
 
 ```
 ./run.sh agency01
 ```
 
-Run all tests
+Open new terminal and start Bob's agency:
 
 ```
-yarn test
+./run.sh agency02
 ```
 
-Run e2e tests with HTTP routing agency
+Run tests:
 
 ```
 yarn test -t "with agency"
 ```
 
-Run e2e tests with in memory messaging via RxJS subscriptions (you don't need to start agency for these tests)
+## Run all tests
+
+You have to start agencies first, because it runs all tests togheter.
 
 ```
-yarn test -t "agents"
+yarn test
 ```

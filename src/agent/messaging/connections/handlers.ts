@@ -79,8 +79,6 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
     // check signature
     const valid = await wallet.verify(signerVerkey, data, signature);
 
-    const connectionReponse = JSON.parse(data.toString('utf-8'));
-
     if (!valid) {
       throw new Error('Signature is not valid!');
     }
@@ -91,6 +89,7 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
       throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
     }
 
+    const connectionReponse = JSON.parse(data.toString('utf-8'));
     connection.theirDid = connectionReponse.did;
     connection.theirDidDoc = connectionReponse.did_doc;
     // Keep also theirKey for debug reasons
