@@ -1,28 +1,37 @@
-import { Connection, ConnectionState, InitConfig, Agency } from '../../types';
+import { Connection, ConnectionState, InitConfig, Agency, InvitationDetails, Message } from '../../types';
 import { Wallet } from '../../Wallet';
-import { createInvitationMessage } from './messages';
+import { createInvitationMessage, createConnectionRequestMessage } from './messages';
+import { Context } from '../../Context';
+import { createOutboundMessage } from '../helpers';
 
 class ConnectionService {
-  config: InitConfig;
-  wallet: Wallet;
+  context: Context;
   connections: Connection[] = [];
 
-  constructor(config: InitConfig, wallet: Wallet) {
-    this.config = config;
-    this.wallet = wallet;
+  constructor(context: Context) {
+    this.context = context;
   }
 
-  async createConnectionWithInvitation(agency?: Agency): Promise<Connection> {
-    const connection = await this.createConnection(agency);
-    const invitationDetails = this.createInvitationDetails(this.config, connection);
+  async acceptInvitation(invitation: Message) {
+    const connection = await this.createConnection();
+    const connectionRequest = createConnectionRequestMessage(connection, this.context.config.label);
+
+    connection.state = ConnectionState.REQUESTED;
+
+    return createOutboundMessage(connection, connectionRequest, invitation);
+  }
+
+  async createConnectionWithInvitation(): Promise<Connection> {
+    const connection = await this.createConnection();
+    const invitationDetails = this.createInvitationDetails(this.context.config, connection);
     const invitation = await createInvitationMessage(invitationDetails);
     connection.state = ConnectionState.INVITED;
     connection.invitation = invitation;
     return connection;
   }
 
-  async createConnection(agency?: Agency): Promise<Connection> {
-    const [did, verkey] = await this.wallet.createDid();
+  async createConnection(): Promise<Connection> {
+    const [did, verkey] = await this.context.wallet.createDid();
     const did_doc = {
       '@context': 'https://w3id.org/did/v1',
       service: [
@@ -31,8 +40,8 @@ class ConnectionService {
           type: 'did-communication',
           priority: 0,
           recipientKeys: [verkey],
-          routingKeys: this.getRoutingKeys(agency),
-          serviceEndpoint: this.getEndpoint(agency),
+          routingKeys: this.getRoutingKeys(),
+          serviceEndpoint: this.getEndpoint(),
         },
       ],
     };
@@ -62,6 +71,11 @@ class ConnectionService {
     return this.connections.find(connection => connection.theirKey === verkey);
   }
 
+  // TODO Temporarily get context from service until this code will be move into connection service itself
+  getContext() {
+    return this.context;
+  }
+
   private createInvitationDetails(config: InitConfig, connection: Connection) {
     const { didDoc } = connection;
     return {
@@ -72,14 +86,14 @@ class ConnectionService {
     };
   }
 
-  private getEndpoint(agency?: Agency) {
-    const connection = agency && agency.connection;
+  private getEndpoint() {
+    const connection = this.context.agency && this.context.agency.connection;
     const endpoint = connection && connection.theirDidDoc && connection.theirDidDoc.service[0].serviceEndpoint;
-    return endpoint ? `${endpoint}` : `${this.config.url}:${this.config.port}/msg`;
+    return endpoint ? `${endpoint}` : `${this.context.config.url}:${this.context.config.port}/msg`;
   }
 
-  private getRoutingKeys(agency?: Agency) {
-    const verkey = agency && agency.verkey;
+  private getRoutingKeys() {
+    const verkey = this.context.agency && this.context.agency.verkey;
     return verkey ? [verkey] : [];
   }
 }

@@ -1,7 +1,6 @@
 import { InboundMessage } from '../../types';
 import { ConnectionService } from '../connections/ConnectionService';
 import { RoutingService } from './RoutingService';
-import { Context } from '../interface';
 import { createOutboundMessage } from '../helpers';
 
 type RouteUpdate = {
@@ -10,7 +9,7 @@ type RouteUpdate = {
 };
 
 export function handleRouteUpdateMessage(connectionService: ConnectionService, routingService: RoutingService) {
-  return async (inboundMessage: InboundMessage, context: Context) => {
+  return async (inboundMessage: InboundMessage) => {
     const { message, recipient_verkey, sender_verkey } = inboundMessage;
     const connection = connectionService.findByVerkey(recipient_verkey);
 
@@ -32,7 +31,7 @@ export function handleRouteUpdateMessage(connectionService: ConnectionService, r
 }
 
 export function handleForwardMessage(routingService: RoutingService) {
-  return async (inboundMessage: InboundMessage, context: Context) => {
+  return async (inboundMessage: InboundMessage) => {
     const { message, recipient_verkey, sender_verkey } = inboundMessage;
 
     const { msg, to } = message;

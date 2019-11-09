@@ -1,7 +1,7 @@
 import logger from '../logger';
-import { Connection, OutboundMessage, InitConfig, Agency } from './types';
+import { Connection, OutboundMessage, InitConfig, Agency, Handler } from './types';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
-import { IndyWallet, Wallet } from './Wallet';
+import { IndyWallet } from './Wallet';
 import {
   handleInvitation,
   handleConnectionRequest,
@@ -19,51 +19,54 @@ import {
   createRouteUpdateMessage,
 } from './messaging/routing/messages';
 import { RoutingService } from './messaging/routing/RoutingService';
-import { Handler } from './messaging/interface';
 import { createOutboundMessage } from './messaging/helpers';
+import { Context } from './Context';
 
 class Agent {
-  config: InitConfig;
+  context: Context;
   messageSender: MessageSender;
-  wallet: Wallet;
   connectionService: ConnectionService;
   routingService: RoutingService;
-  agency?: Agency;
   handlers: { [key: string]: Handler } = {};
 
   constructor(config: InitConfig, messageSender: MessageSender) {
     logger.logJson('Creating agent with config', config);
 
-    this.config = config;
     this.messageSender = messageSender;
 
-    this.wallet = new IndyWallet({ id: config.walletName }, { key: config.walletKey });
-    this.connectionService = new ConnectionService(this.config, this.wallet);
+    const wallet = new IndyWallet({ id: config.walletName }, { key: config.walletKey });
+
+    this.context = {
+      config,
+      wallet,
+    };
+
+    this.connectionService = new ConnectionService(this.context);
     this.routingService = new RoutingService();
 
     this.registerHandlers();
   }
 
   async init() {
-    await this.wallet.init();
+    await this.context.wallet.init();
   }
 
   /**
    * This method will be probably used only when agent is running as routing agency
    */
   async setAgentDid() {
-    this.wallet.initPublicDid(this.config.publicDid, this.config.publicDidSeed);
+    this.context.wallet.initPublicDid(this.context.config.publicDid, this.context.config.publicDidSeed);
   }
 
   /**
    * This method will be probably used only when agent is running as routing agency
    */
   getAgentDid() {
-    return this.wallet.getPublicDid();
+    return this.context.wallet.getPublicDid();
   }
 
   async createInvitationUrl() {
-    const connection = await this.connectionService.createConnectionWithInvitation(this.agency);
+    const connection = await this.connectionService.createConnectionWithInvitation();
     const { invitation } = connection;
 
     if (!invitation) {
@@ -71,8 +74,8 @@ class Agent {
     }
 
     // If agent is using agency, we need to create a route for newly created connection verkey at agency.
-    if (this.agency) {
-      this.createRoute(connection.verkey, this.agency.connection);
+    if (this.context.agency) {
+      this.createRoute(connection.verkey, this.context.agency.connection);
     }
 
     return encodeInvitationToUrl(invitation);
@@ -85,11 +88,11 @@ class Agent {
   }
 
   async receiveMessage(inboundPackedMessage: any) {
-    logger.logJson(`Agent ${this.config.label} received message:`, inboundPackedMessage);
+    logger.logJson(`Agent ${this.context.config.label} received message:`, inboundPackedMessage);
     let inboundMessage;
 
     if (!inboundPackedMessage['@type']) {
-      inboundMessage = await this.wallet.unpack(inboundPackedMessage);
+      inboundMessage = await this.context.wallet.unpack(inboundPackedMessage);
 
       if (!inboundMessage.message['@type']) {
         // TODO In this case we assume we got forwarded JWE message (wire message?) to this agent from agency. We should
@@ -97,7 +100,7 @@ class Agent {
         logger.logJson('Forwarded message', inboundMessage);
 
         // @ts-ignore
-        inboundMessage = await this.wallet.unpack(inboundMessage.message);
+        inboundMessage = await this.context.wallet.unpack(inboundMessage.message);
       }
     } else {
       inboundMessage = { message: inboundPackedMessage };
@@ -130,7 +133,7 @@ class Agent {
   }
 
   setAgency(agencyVerkey: Verkey, connection: Connection) {
-    this.agency = { verkey: agencyVerkey, connection };
+    this.context.agency = { verkey: agencyVerkey, connection };
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {
@@ -150,25 +153,17 @@ class Agent {
       throw new Error(`No handler for message type "${messageType}" found`);
     }
 
-    const context = {
-      config: this.config,
-      wallet: this.wallet,
-      agency: this.agency,
-      connectionService: this.connectionService,
-      routingService: this.routingService,
-    };
-
-    const outboundMessage = await handler(inboundMessage, context);
+    const outboundMessage = await handler(inboundMessage);
 
     // TODO I don't like create route logic is here. It should be in handler, but currently, it's not possible to send
     // message directly from handler. If agent is using agency, we need to create a route for newly created connection
     // verkey at agency.
-    if (messageType === ConnectionsMessageType.ConnectionInvitation && this.agency) {
+    if (messageType === ConnectionsMessageType.ConnectionInvitation && this.context.agency) {
       if (!outboundMessage) {
         throw new Error("No outbound message for connection invitation. It won't be possible to create a route.");
       }
       const { verkey } = outboundMessage.connection;
-      this.createRoute(verkey, this.agency.connection);
+      this.createRoute(verkey, this.context.agency.connection);
     }
 
     return outboundMessage;
@@ -185,7 +180,7 @@ class Agent {
 
     logger.logJson('outboundMessage', { verkey, theirKey, routingKeys, endpoint, payload });
 
-    const outboundPackedMessage = await this.wallet.pack(payload, recipientKeys, senderVk);
+    const outboundPackedMessage = await this.context.wallet.pack(payload, recipientKeys, senderVk);
 
     let message = outboundPackedMessage;
     if (routingKeys.length > 0) {
@@ -193,7 +188,7 @@ class Agent {
         const [recipientKey] = recipientKeys;
         const forwardMessage = createForwardMessage(recipientKey, message);
         logger.logJson('Forward message created', forwardMessage);
-        message = await this.wallet.pack(forwardMessage, [routingKey], senderVk);
+        message = await this.context.wallet.pack(forwardMessage, [routingKey], senderVk);
       }
     }
 

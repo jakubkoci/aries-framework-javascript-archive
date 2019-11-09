@@ -1,25 +1,20 @@
 import { InboundMessage, ConnectionState } from '../../types';
 import { ConnectionService } from './ConnectionService';
-import { createConnectionRequestMessage, createAckMessage, createConnectionResponseMessage } from './messages';
-import { Context } from '../interface';
+import { createAckMessage, createConnectionResponseMessage } from './messages';
 import { createOutboundMessage } from '../helpers';
 
 export function handleInvitation(connectionService: ConnectionService) {
-  return async (inboundMessage: InboundMessage, context: Context) => {
-    const { config, agency } = context;
-    const invitation = inboundMessage.message;
-    const connection = await connectionService.createConnection(agency);
-    const connectionRequest = createConnectionRequestMessage(connection, config.label);
-
-    connection.state = ConnectionState.REQUESTED;
-
-    return createOutboundMessage(connection, connectionRequest, invitation);
+  return async (inboundMessage: InboundMessage) => {
+    const invitation = inboundMessage.message    
+    const outboudMessage = connectionService.acceptInvitation(invitation)
+    return outboudMessage
   };
 }
 
 export function handleConnectionRequest(connectionService: ConnectionService) {
-  return async (inboundMessage: InboundMessage, context: Context) => {
-    const { wallet } = context;
+  return async (inboundMessage: InboundMessage) => {
+    // TODO Temporarily get context from service until this code will be move into connection service itself
+    const { wallet } = connectionService.getContext();
     const { message, recipient_verkey, sender_verkey } = inboundMessage;
     const connection = connectionService.findByVerkey(recipient_verkey);
 
@@ -63,8 +58,9 @@ export function handleConnectionRequest(connectionService: ConnectionService) {
 }
 
 export function handleConnectionResponse(connectionService: ConnectionService) {
-  return async (inboundMessage: InboundMessage, context: Context) => {
-    const { wallet } = context;
+  return async (inboundMessage: InboundMessage) => {
+    // TODO Temporarily get context from service until this code will be move into connection service itself
+    const { wallet } = connectionService.getContext();
     const { message, recipient_verkey, sender_verkey } = inboundMessage;
 
     if (!message['connection~sig']) {
@@ -108,7 +104,7 @@ export function handleConnectionResponse(connectionService: ConnectionService) {
 }
 
 export function handleAckMessage(connectionService: ConnectionService) {
-  return async (inboundMessage: InboundMessage, context: Context) => {
+  return async (inboundMessage: InboundMessage) => {
     const { message, recipient_verkey, sender_verkey } = inboundMessage;
     const connection = connectionService.findByVerkey(recipient_verkey);
 
