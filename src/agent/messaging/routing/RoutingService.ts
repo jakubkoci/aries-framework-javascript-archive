@@ -1,7 +1,49 @@
-import { Connection } from '../../types';
+import { Connection, InboundMessage } from '../../types';
+import { createOutboundMessage } from '../helpers';
+
+type RouteUpdate = {
+  action: 'add' | 'remove';
+  recipient_key: Verkey;
+};
 
 class RoutingService {
   routingTable: { [recipientKey: string]: Connection } = {};
+
+  updateRoutes(inboudMessage: InboundMessage, connection: Connection) {
+    const { message } = inboudMessage;
+    message.updates.forEach((update: RouteUpdate) => {
+      const { action, recipient_key } = update;
+      if (action === 'add') {
+        this.saveRoute(recipient_key, connection);
+      } else {
+        throw new Error(`Unsupported operation ${action}`);
+      }
+    });
+
+    return null;
+  }
+
+  forward(inboundMessage: InboundMessage) {
+    const { message, recipient_verkey, sender_verkey } = inboundMessage;
+
+    const { msg, to } = message;
+
+    if (!to) {
+      throw new Error('Invalid Message: Missing required attribute "to"');
+    }
+
+    const connection = this.findRecipient(to);
+
+    if (!connection) {
+      throw new Error(`Connection for verkey ${recipient_verkey} not found!`);
+    }
+
+    if (!connection.theirKey) {
+      throw new Error(`Connection with verkey ${connection.verkey} has no recipient keys.`);
+    }
+
+    return createOutboundMessage(connection, msg);
+  }
 
   getRoutes() {
     return this.routingTable;

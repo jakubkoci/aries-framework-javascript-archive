@@ -104,7 +104,7 @@ describe('with agency', () => {
     expect(bobConnectionAtBobAlice).toBeConnectedWith(aliceConnectionAtAliceBob);
   });
 
-  test('send a message to connection', async () => {
+  test('send a message to connection via agency', async () => {
     const aliceConnections = await aliceAgent.getConnections();
     console.log('aliceConnections', JSON.stringify(aliceConnections, null, 2));
 

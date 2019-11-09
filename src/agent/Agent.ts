@@ -21,11 +21,13 @@ import {
 import { RoutingService } from './messaging/routing/RoutingService';
 import { createOutboundMessage } from './messaging/helpers';
 import { Context } from './Context';
+import { BasicMessageService } from './messaging/basicmessage/BasicMessageService';
 
 class Agent {
   context: Context;
   messageSender: MessageSender;
   connectionService: ConnectionService;
+  basicMessageService: BasicMessageService;
   routingService: RoutingService;
   handlers: { [key: string]: Handler } = {};
 
@@ -42,6 +44,7 @@ class Agent {
     };
 
     this.connectionService = new ConnectionService(this.context);
+    this.basicMessageService = new BasicMessageService();
     this.routingService = new RoutingService();
 
     this.registerHandlers();
@@ -137,11 +140,7 @@ class Agent {
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {
-    // TODO I don't like so much logic in here. It would be probably better to put it into some service. It could be
-    // possible to execute it by some handler, but handler is currently only for processing inbound messages.
-
-    const basicMessage = createBasicMessage(message);
-    const outboundMessage = createOutboundMessage(connection, basicMessage);
+    const outboundMessage = this.basicMessageService.send(message, connection)
     await this.sendMessage(outboundMessage);
   }
 
@@ -212,7 +211,7 @@ class Agent {
       [ConnectionsMessageType.ConnectionRequest]: handleConnectionRequest(this.connectionService),
       [ConnectionsMessageType.ConnectionResposne]: handleConnectionResponse(this.connectionService),
       [ConnectionsMessageType.Ack]: handleAckMessage(this.connectionService),
-      [BasicMessageMessageType.BasicMessage]: handleBasicMessage(this.connectionService),
+      [BasicMessageMessageType.BasicMessage]: handleBasicMessage(this.connectionService, this.basicMessageService),
       [RoutingMessageType.RouteUpdateMessage]: handleRouteUpdateMessage(this.connectionService, this.routingService),
       [RoutingMessageType.ForwardMessage]: handleForwardMessage(this.routingService),
     };
