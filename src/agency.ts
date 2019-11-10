@@ -2,14 +2,14 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import config from './config';
 import logger from './logger';
-import { Agent } from './agent/Agent';
-import { OutboundMessage } from './agent/types';
+import { Agent, OutboundTransporter } from './agent/Agent';
+import { OutboundPackage } from './agent/types';
 
-class StorageMessageSender {
+class StorageOutboundTransporter implements OutboundTransporter {
   messages: { [key: string]: any } = {};
 
-  async sendMessage(message: OutboundMessage, outboundMessage?: OutboundMessage) {
-    const connection = outboundMessage && outboundMessage.connection;
+  async sendMessage(outboundPackage: OutboundPackage) {
+    const { connection, payload } = outboundPackage;
 
     if (!connection) {
       throw new Error(`Missing connection. I don't know how and where to send the message.`);
@@ -23,9 +23,9 @@ class StorageMessageSender {
       this.messages[connection.theirKey] = [];
     }
 
-    logger.logJson('Storing message', { connection, message });
+    logger.logJson('Storing message', { connection, payload });
 
-    this.messages[connection.theirKey].push(message);
+    this.messages[connection.theirKey].push(payload);
   }
 
   takeFirstMessage(verkey: Verkey) {
@@ -39,7 +39,7 @@ class StorageMessageSender {
 const PORT = config.port;
 const app = express();
 
-const messageSender = new StorageMessageSender();
+const messageSender = new StorageOutboundTransporter();
 const agent = new Agent(config, messageSender);
 
 app.use(bodyParser.text());

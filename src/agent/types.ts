@@ -1,3 +1,6 @@
+type $FixMe = any;
+type WireMessage = $FixMe;
+
 export interface InitConfig {
   url: string;
   port: string | number;
@@ -67,6 +70,16 @@ export interface OutboundMessage {
   recipientKeys: Verkey[];
   routingKeys: Verkey[];
   senderVk: Verkey | null;
+}
+
+export interface OutboundPackage {
+  connection: Connection,
+  payload: WireMessage,
+  endpoint?: string,
+}
+
+export interface OutboundTransporter {
+  sendMessage(outboundPackage: OutboundPackage): any;
 }
 
 export interface Agency {

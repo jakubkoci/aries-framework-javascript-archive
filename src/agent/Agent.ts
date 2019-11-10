@@ -1,5 +1,5 @@
 import logger from '../logger';
-import { Connection, OutboundMessage, InitConfig, Agency, Handler } from './types';
+import { Connection, OutboundMessage, InitConfig, Agency, Handler, OutboundTransporter } from './types';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
 import { IndyWallet } from './Wallet';
 import {
@@ -25,16 +25,16 @@ import { BasicMessageService } from './messaging/basicmessage/BasicMessageServic
 
 class Agent {
   context: Context;
-  messageSender: MessageSender;
+  outboundTransporter: OutboundTransporter;
   connectionService: ConnectionService;
   basicMessageService: BasicMessageService;
   routingService: RoutingService;
   handlers: { [key: string]: Handler } = {};
 
-  constructor(config: InitConfig, messageSender: MessageSender) {
+  constructor(config: InitConfig, outboundTransporter: OutboundTransporter) {
     logger.logJson('Creating agent with config', config);
 
-    this.messageSender = messageSender;
+    this.outboundTransporter = outboundTransporter;
 
     const wallet = new IndyWallet({ id: config.walletName }, { key: config.walletKey });
 
@@ -140,7 +140,7 @@ class Agent {
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {
-    const outboundMessage = this.basicMessageService.send(message, connection)
+    const outboundMessage = this.basicMessageService.send(message, connection);
     await this.sendMessage(outboundMessage);
   }
 
@@ -169,14 +169,9 @@ class Agent {
   }
 
   private async sendMessage(outboundMessage: OutboundMessage) {
-    const {
-      connection: { verkey, theirKey, endpoint },
-      routingKeys,
-      recipientKeys,
-      senderVk,
-      payload,
-    } = outboundMessage;
+    const { connection, routingKeys, recipientKeys, senderVk, payload, endpoint } = outboundMessage;
 
+    const { verkey, theirKey } = connection;
     logger.logJson('outboundMessage', { verkey, theirKey, routingKeys, endpoint, payload });
 
     const outboundPackedMessage = await this.context.wallet.pack(payload, recipientKeys, senderVk);
@@ -191,7 +186,8 @@ class Agent {
       }
     }
 
-    this.messageSender.sendMessage(message, outboundMessage);
+    const outboundPackage = { connection, payload: message, endpoint };
+    this.outboundTransporter.sendMessage(outboundPackage);
   }
 
   private async createRoute(verkey: Verkey, routingConnection: Connection) {
@@ -220,11 +216,4 @@ class Agent {
   }
 }
 
-type $FixMe = any;
-type WireMessage = $FixMe;
-
-interface MessageSender {
-  sendMessage(message: WireMessage, outboundMessage?: OutboundMessage): any;
-}
-
-export { Agent };
+export { Agent, OutboundTransporter };

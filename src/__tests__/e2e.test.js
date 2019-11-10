@@ -29,8 +29,8 @@ describe('with agency', () => {
   test('make a connection with agency', async () => {
     const aliceAgencyUrl = `http://localhost:3001`;
     const bobAgencyUrl = `http://localhost:3002`;
-    const aliceAgentSender = new HttpMessageSender();
-    const bobAgentSender = new HttpMessageSender();
+    const aliceAgentSender = new HttpOutboundTransporter();
+    const bobAgentSender = new HttpOutboundTransporter();
 
     aliceAgent = new Agent(aliceConfig, aliceAgentSender);
     await aliceAgent.init();
@@ -141,16 +141,16 @@ function pollMessages(agent, agencyUrl, verkey) {
   );
 }
 
-class HttpMessageSender {
-  async sendMessage(message, outboundMessage) {
-    const endpoint = outboundMessage && outboundMessage.endpoint;
+class HttpOutboundTransporter {
+  async sendMessage(outboundPackage) {
+    const { payload, endpoint } = outboundPackage;
 
     if (!endpoint) {
       throw new Error(`Missing endpoint. I don't know how and where to send the message.`);
     }
 
     console.log('Sending message...');
-    console.log(message);
-    await post(`${endpoint}`, JSON.stringify(message));
+    console.log(payload);
+    await post(`${endpoint}`, JSON.stringify(payload));
   }
 }

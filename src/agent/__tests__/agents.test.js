@@ -30,8 +30,8 @@ describe('agents', () => {
     const aliceMessages = new Subject();
     const bobMessages = new Subject();
 
-    const aliceAgentSender = new SubjectMessageSender(bobMessages);
-    const bobAgentSender = new SubjectMessageSender(aliceMessages);
+    const aliceAgentSender = new SubjectOutboundTransporter(bobMessages);
+    const bobAgentSender = new SubjectOutboundTransporter(aliceMessages);
 
     aliceAgent = new Agent(aliceConfig, aliceAgentSender);
     await aliceAgent.init();
@@ -93,15 +93,16 @@ describe('agents', () => {
   });
 });
 
-class SubjectMessageSender {
+class SubjectOutboundTransporter {
   constructor(subject) {
     this.subject = subject;
   }
 
-  sendMessage(message) {
+  sendMessage(outboundPackage) {
     console.log('Sending message...');
-    console.log(message);
-    this.subject.next(message);
+    const { payload } = outboundPackage;
+    console.log(payload);
+    this.subject.next(payload);
   }
 }
 
