@@ -1,9 +1,8 @@
 import { InboundMessage } from '../../types';
 import { ConnectionService } from '../connections/ConnectionService';
-import { RoutingService } from './RoutingService';
-import { createOutboundMessage } from '../helpers';
+import { ProviderRoutingService } from './ProviderRoutingService';
 
-export function handleRouteUpdateMessage(connectionService: ConnectionService, routingService: RoutingService) {
+export function handleRouteUpdateMessage(connectionService: ConnectionService, routingService: ProviderRoutingService) {
   return async (inboundMessage: InboundMessage) => {
     const { message, recipient_verkey, sender_verkey } = inboundMessage;
     const connection = connectionService.findByVerkey(recipient_verkey);
@@ -17,9 +16,9 @@ export function handleRouteUpdateMessage(connectionService: ConnectionService, r
   };
 }
 
-export function handleForwardMessage(routingService: RoutingService) {
+export function handleForwardMessage(routingService: ProviderRoutingService) {
   return async (inboundMessage: InboundMessage) => {
-    const outboundMessage = routingService.forward(inboundMessage)
-    return outboundMessage
+    const outboundMessage = routingService.forward(inboundMessage);
+    return outboundMessage;
   };
 }

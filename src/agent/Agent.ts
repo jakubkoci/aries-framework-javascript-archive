@@ -1,5 +1,5 @@
 import logger from '../logger';
-import { Connection, OutboundMessage, InitConfig, Agency, Handler, OutboundTransporter } from './types';
+import { Connection, OutboundMessage, InitConfig, Handler, OutboundTransporter } from './types';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
 import { IndyWallet } from './Wallet';
 import {
@@ -11,41 +11,39 @@ import {
 import { ConnectionService } from './messaging/connections/ConnectionService';
 import { MessageType as ConnectionsMessageType } from './messaging/connections/messages';
 import { handleBasicMessage } from './messaging/basicmessage/handlers';
-import { MessageType as BasicMessageMessageType, createBasicMessage } from './messaging/basicmessage/messages';
+import { MessageType as BasicMessageMessageType } from './messaging/basicmessage/messages';
 import { handleForwardMessage, handleRouteUpdateMessage } from './messaging/routing/handlers';
-import {
-  MessageType as RoutingMessageType,
-  createForwardMessage,
-  createRouteUpdateMessage,
-} from './messaging/routing/messages';
-import { RoutingService } from './messaging/routing/RoutingService';
-import { createOutboundMessage } from './messaging/helpers';
+import { MessageType as RoutingMessageType } from './messaging/routing/messages';
+import { ProviderRoutingService } from './messaging/routing/ProviderRoutingService';
 import { Context } from './Context';
 import { BasicMessageService } from './messaging/basicmessage/BasicMessageService';
+import { MessageSender } from './MessageSender';
+import { ConsumerRoutingService } from './messaging/routing/ConsumerRoutingService';
 
 class Agent {
   context: Context;
-  outboundTransporter: OutboundTransporter;
   connectionService: ConnectionService;
   basicMessageService: BasicMessageService;
-  routingService: RoutingService;
+  providerRoutingService: ProviderRoutingService;
+  consumerRoutingService: ConsumerRoutingService;
   handlers: { [key: string]: Handler } = {};
 
   constructor(config: InitConfig, outboundTransporter: OutboundTransporter) {
     logger.logJson('Creating agent with config', config);
 
-    this.outboundTransporter = outboundTransporter;
-
     const wallet = new IndyWallet({ id: config.walletName }, { key: config.walletKey });
+    const messageSender = new MessageSender(wallet, outboundTransporter);
 
     this.context = {
       config,
       wallet,
+      messageSender,
     };
 
     this.connectionService = new ConnectionService(this.context);
     this.basicMessageService = new BasicMessageService();
-    this.routingService = new RoutingService();
+    this.providerRoutingService = new ProviderRoutingService();
+    this.consumerRoutingService = new ConsumerRoutingService(this.context);
 
     this.registerHandlers();
   }
@@ -78,7 +76,7 @@ class Agent {
 
     // If agent is using agency, we need to create a route for newly created connection verkey at agency.
     if (this.context.agency) {
-      this.createRoute(connection.verkey, this.context.agency.connection);
+      this.consumerRoutingService.createRoute(connection.verkey);
     }
 
     return encodeInvitationToUrl(invitation);
@@ -113,7 +111,7 @@ class Agent {
     const outboundMessage = await this.dispatch(inboundMessage);
 
     if (outboundMessage) {
-      this.sendMessage(outboundMessage);
+      this.context.messageSender.sendMessage(outboundMessage);
     }
 
     return outboundMessage && outboundMessage.connection.verkey;
@@ -132,7 +130,7 @@ class Agent {
   }
 
   getRoutes() {
-    return this.routingService.getRoutes();
+    return this.providerRoutingService.getRoutes();
   }
 
   setAgency(agencyVerkey: Verkey, connection: Connection) {
@@ -141,7 +139,7 @@ class Agent {
 
   async sendMessageToConnection(connection: Connection, message: string) {
     const outboundMessage = this.basicMessageService.send(message, connection);
-    await this.sendMessage(outboundMessage);
+    await this.context.messageSender.sendMessage(outboundMessage);
   }
 
   private async dispatch(inboundMessage: any): Promise<OutboundMessage | null> {
@@ -153,63 +151,24 @@ class Agent {
     }
 
     const outboundMessage = await handler(inboundMessage);
-
-    // TODO I don't like create route logic is here. It should be in handler, but currently, it's not possible to send
-    // message directly from handler. If agent is using agency, we need to create a route for newly created connection
-    // verkey at agency.
-    if (messageType === ConnectionsMessageType.ConnectionInvitation && this.context.agency) {
-      if (!outboundMessage) {
-        throw new Error("No outbound message for connection invitation. It won't be possible to create a route.");
-      }
-      const { verkey } = outboundMessage.connection;
-      this.createRoute(verkey, this.context.agency.connection);
-    }
-
     return outboundMessage;
-  }
-
-  private async sendMessage(outboundMessage: OutboundMessage) {
-    const { connection, routingKeys, recipientKeys, senderVk, payload, endpoint } = outboundMessage;
-
-    const { verkey, theirKey } = connection;
-    logger.logJson('outboundMessage', { verkey, theirKey, routingKeys, endpoint, payload });
-
-    const outboundPackedMessage = await this.context.wallet.pack(payload, recipientKeys, senderVk);
-
-    let message = outboundPackedMessage;
-    if (routingKeys.length > 0) {
-      for (const routingKey of routingKeys) {
-        const [recipientKey] = recipientKeys;
-        const forwardMessage = createForwardMessage(recipientKey, message);
-        logger.logJson('Forward message created', forwardMessage);
-        message = await this.context.wallet.pack(forwardMessage, [routingKey], senderVk);
-      }
-    }
-
-    const outboundPackage = { connection, payload: message, endpoint };
-    this.outboundTransporter.sendMessage(outboundPackage);
-  }
-
-  private async createRoute(verkey: Verkey, routingConnection: Connection) {
-    // TODO I don't like so much logic in here. It would be probably better to put it into some service. It could be
-    // possible to execute it by some handler, but handler is currently only for processing inbound messages.
-
-    logger.log('Creating route...');
-    const routeUpdateMessage = createRouteUpdateMessage(verkey);
-
-    const outboundMessage = createOutboundMessage(routingConnection, routeUpdateMessage);
-    await this.sendMessage(outboundMessage);
   }
 
   private registerHandlers() {
     const handlers = {
-      [ConnectionsMessageType.ConnectionInvitation]: handleInvitation(this.connectionService),
+      [ConnectionsMessageType.ConnectionInvitation]: handleInvitation(
+        this.connectionService,
+        this.consumerRoutingService
+      ),
       [ConnectionsMessageType.ConnectionRequest]: handleConnectionRequest(this.connectionService),
       [ConnectionsMessageType.ConnectionResposne]: handleConnectionResponse(this.connectionService),
       [ConnectionsMessageType.Ack]: handleAckMessage(this.connectionService),
       [BasicMessageMessageType.BasicMessage]: handleBasicMessage(this.connectionService, this.basicMessageService),
-      [RoutingMessageType.RouteUpdateMessage]: handleRouteUpdateMessage(this.connectionService, this.routingService),
-      [RoutingMessageType.ForwardMessage]: handleForwardMessage(this.routingService),
+      [RoutingMessageType.RouteUpdateMessage]: handleRouteUpdateMessage(
+        this.connectionService,
+        this.providerRoutingService
+      ),
+      [RoutingMessageType.ForwardMessage]: handleForwardMessage(this.providerRoutingService),
     };
 
     this.handlers = handlers;

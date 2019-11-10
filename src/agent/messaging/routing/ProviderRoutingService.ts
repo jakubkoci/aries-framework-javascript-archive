@@ -6,7 +6,7 @@ type RouteUpdate = {
   recipient_key: Verkey;
 };
 
-class RoutingService {
+class ProviderRoutingService {
   routingTable: { [recipientKey: string]: Connection } = {};
 
   updateRoutes(inboudMessage: InboundMessage, connection: Connection) {
@@ -68,4 +68,4 @@ class RoutingService {
   }
 }
 
-export { RoutingService };
+export { ProviderRoutingService };
