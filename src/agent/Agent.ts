@@ -1,5 +1,5 @@
 import logger from '../logger';
-import { Connection, OutboundMessage, InitConfig, Handler, OutboundTransporter } from './types';
+import { Connection, InitConfig, Handler, OutboundTransporter } from './types';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
 import { IndyWallet } from './Wallet';
 import {
@@ -15,13 +15,16 @@ import { MessageType as BasicMessageMessageType } from './messaging/basicmessage
 import { handleForwardMessage, handleRouteUpdateMessage } from './messaging/routing/handlers';
 import { MessageType as RoutingMessageType } from './messaging/routing/messages';
 import { ProviderRoutingService } from './messaging/routing/ProviderRoutingService';
-import { Context } from './Context';
 import { BasicMessageService } from './messaging/basicmessage/BasicMessageService';
-import { MessageSender } from './MessageSender';
 import { ConsumerRoutingService } from './messaging/routing/ConsumerRoutingService';
+import { Context } from './Context';
+import { MessageReceiver } from './MessageReceiver';
+import { BasicDispatcher } from './BasicDispatcher';
+import { MessageSender } from './MessageSender';
 
 class Agent {
   context: Context;
+  messageReceiver: MessageReceiver;
   connectionService: ConnectionService;
   basicMessageService: BasicMessageService;
   providerRoutingService: ProviderRoutingService;
@@ -46,6 +49,9 @@ class Agent {
     this.consumerRoutingService = new ConsumerRoutingService(this.context);
 
     this.registerHandlers();
+
+    const dispatcher = new BasicDispatcher(this.handlers, messageSender);
+    this.messageReceiver = new MessageReceiver(config, wallet, dispatcher);
   }
 
   async init() {
@@ -84,37 +90,12 @@ class Agent {
 
   async acceptInvitationUrl(invitationUrl: string) {
     const invitation = decodeInvitationFromUrl(invitationUrl);
-    const verkey = await this.receiveMessage(invitation);
+    const verkey = await this.messageReceiver.receiveMessage(invitation);
     return verkey;
   }
 
   async receiveMessage(inboundPackedMessage: any) {
-    logger.logJson(`Agent ${this.context.config.label} received message:`, inboundPackedMessage);
-    let inboundMessage;
-
-    if (!inboundPackedMessage['@type']) {
-      inboundMessage = await this.context.wallet.unpack(inboundPackedMessage);
-
-      if (!inboundMessage.message['@type']) {
-        // TODO In this case we assume we got forwarded JWE message (wire message?) to this agent from agency. We should
-        // perhaps try to unpack message in some loop until we have a Aries message in here.
-        logger.logJson('Forwarded message', inboundMessage);
-
-        // @ts-ignore
-        inboundMessage = await this.context.wallet.unpack(inboundMessage.message);
-      }
-    } else {
-      inboundMessage = { message: inboundPackedMessage };
-    }
-
-    logger.logJson('inboundMessage', inboundMessage);
-    const outboundMessage = await this.dispatch(inboundMessage);
-
-    if (outboundMessage) {
-      this.context.messageSender.sendMessage(outboundMessage);
-    }
-
-    return outboundMessage && outboundMessage.connection.verkey;
+    this.messageReceiver.receiveMessage(inboundPackedMessage);
   }
 
   getConnections() {
@@ -140,18 +121,6 @@ class Agent {
   async sendMessageToConnection(connection: Connection, message: string) {
     const outboundMessage = this.basicMessageService.send(message, connection);
     await this.context.messageSender.sendMessage(outboundMessage);
-  }
-
-  private async dispatch(inboundMessage: any): Promise<OutboundMessage | null> {
-    const messageType: string = inboundMessage.message['@type'];
-    const handler = this.handlers[messageType];
-
-    if (!handler) {
-      throw new Error(`No handler for message type "${messageType}" found`);
-    }
-
-    const outboundMessage = await handler(inboundMessage);
-    return outboundMessage;
   }
 
   private registerHandlers() {
