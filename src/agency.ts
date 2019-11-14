@@ -46,7 +46,7 @@ app.use(bodyParser.text());
 app.set('json spaces', 2);
 
 app.get('/', async (req, res) => {
-  const agentDid = agent.getAgentDid();
+  const agentDid = agent.getPublicDid();
   res.send(agentDid);
 });
 
@@ -95,6 +95,5 @@ app.get('/api/messages', async (req, res) => {
 
 app.listen(PORT, async () => {
   await agent.init();
-  await agent.setAgentDid();
   logger.log(`Application started on port ${PORT}`);
 });

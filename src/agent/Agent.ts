@@ -56,19 +56,15 @@ class Agent {
 
   async init() {
     await this.context.wallet.init();
+
+    const { publicDid, publicDidSeed } = this.context.config;
+    if (publicDid && publicDidSeed) {
+      // If an agent has publicDid it will be used as routing key.
+      this.context.wallet.initPublicDid(publicDid, publicDidSeed);
+    }
   }
 
-  /**
-   * This method will be probably used only when agent is running as routing agency
-   */
-  async setAgentDid() {
-    this.context.wallet.initPublicDid(this.context.config.publicDid, this.context.config.publicDidSeed);
-  }
-
-  /**
-   * This method will be probably used only when agent is running as routing agency
-   */
-  getAgentDid() {
+  getPublicDid() {
     return this.context.wallet.getPublicDid();
   }
 
