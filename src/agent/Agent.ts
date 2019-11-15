@@ -76,8 +76,9 @@ class Agent {
       throw new Error('Connection has no invitation assigned.');
     }
 
-    // If agent is using agency, we need to create a route for newly created connection verkey at agency.
-    if (this.context.agency) {
+    // If agent has inbound connection, which means it's using agency, we need to create a route for newly created 
+    // connection verkey at agency.
+    if (this.context.inboundConnection) {
       this.consumerRoutingService.createRoute(connection.verkey);
     }
 
@@ -110,8 +111,8 @@ class Agent {
     return this.providerRoutingService.getRoutes();
   }
 
-  setAgency(agencyVerkey: Verkey, connection: Connection) {
-    this.context.agency = { verkey: agencyVerkey, connection };
+  establishInbound(agencyVerkey: Verkey, connection: Connection) {
+    this.context.inboundConnection = { verkey: agencyVerkey, connection };
   }
 
   async sendMessageToConnection(connection: Connection, message: string) {

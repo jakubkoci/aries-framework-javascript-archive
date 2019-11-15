@@ -13,10 +13,10 @@ class ConsumerRoutingService {
   async createRoute(verkey: Verkey) {
     logger.log('Creating route...');
 
-    if (!this.context.agency) {
+    if (!this.context.inboundConnection) {
       logger.log('There is no agency. Creating route skipped.');
     } else {
-      const routingConnection = this.context.agency.connection;
+      const routingConnection = this.context.inboundConnection.connection;
       const routeUpdateMessage = createRouteUpdateMessage(verkey);
 
       const outboundMessage = createOutboundMessage(routingConnection, routeUpdateMessage);

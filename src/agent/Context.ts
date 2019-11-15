@@ -1,11 +1,10 @@
-import logger from '../logger';
 import { Wallet } from './Wallet';
-import { InitConfig, Agency } from './types';
+import { InitConfig, InboundConnection } from './types';
 import { MessageSender } from './MessageSender';
 
 export interface Context {
   config: InitConfig;
   wallet: Wallet;
-  agency?: Agency;
+  inboundConnection?: InboundConnection;
   messageSender: MessageSender;
 }

@@ -194,13 +194,13 @@ class ConnectionService {
   }
 
   private getEndpoint() {
-    const connection = this.context.agency && this.context.agency.connection;
+    const connection = this.context.inboundConnection && this.context.inboundConnection.connection;
     const endpoint = connection && connection.theirDidDoc && connection.theirDidDoc.service[0].serviceEndpoint;
     return endpoint ? `${endpoint}` : `${this.context.config.url}:${this.context.config.port}/msg`;
   }
 
   private getRoutingKeys() {
-    const verkey = this.context.agency && this.context.agency.verkey;
+    const verkey = this.context.inboundConnection && this.context.inboundConnection.verkey;
     return verkey ? [verkey] : [];
   }
 }

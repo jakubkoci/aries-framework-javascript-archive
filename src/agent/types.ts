@@ -9,7 +9,6 @@ export interface InitConfig {
   walletKey: string;
   publicDid: Did;
   publicDidSeed: string;
-  agencyVerkey?: Verkey;
 }
 
 export enum ConnectionState {
@@ -82,7 +81,7 @@ export interface OutboundTransporter {
   sendMessage(outboundPackage: OutboundPackage): any;
 }
 
-export interface Agency {
+export interface InboundConnection {
   verkey: Verkey;
   connection: Connection;
 }

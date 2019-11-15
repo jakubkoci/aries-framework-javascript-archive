@@ -69,8 +69,8 @@ describe('with agency', () => {
 
     const { verkey: aliceAgencyVerkey } = JSON.parse(await get(`${aliceAgencyUrl}/`));
     const { verkey: bobAgencyVerkey } = JSON.parse(await get(`${bobAgencyUrl}/`));
-    aliceAgent.setAgency(aliceAgencyVerkey, aliceConnectionAtAliceAgency);
-    bobAgent.setAgency(bobAgencyVerkey, bobConnectionAtBobAgency);
+    aliceAgent.establishInbound(aliceAgencyVerkey, aliceConnectionAtAliceAgency);
+    bobAgent.establishInbound(bobAgencyVerkey, bobConnectionAtBobAgency);
 
     expect(aliceConnectionAtAliceAgency).toBeConnectedWith(agencyConnectionAtAliceAgency);
     expect(bobConnectionAtBobAgency).toBeConnectedWith(agencyConnectionAtBobAgency);
