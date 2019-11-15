@@ -1,4 +1,4 @@
-import logger from '../logger';
+import logger from './logger';
 import { Connection, InitConfig, Handler, OutboundTransporter } from './types';
 import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
 import { IndyWallet } from './Wallet';
@@ -7,16 +7,16 @@ import {
   handleConnectionRequest,
   handleConnectionResponse,
   handleAckMessage,
-} from './messaging/connections/handlers';
-import { ConnectionService } from './messaging/connections/ConnectionService';
-import { MessageType as ConnectionsMessageType } from './messaging/connections/messages';
-import { handleBasicMessage } from './messaging/basicmessage/handlers';
-import { MessageType as BasicMessageMessageType } from './messaging/basicmessage/messages';
-import { handleForwardMessage, handleRouteUpdateMessage } from './messaging/routing/handlers';
-import { MessageType as RoutingMessageType } from './messaging/routing/messages';
-import { ProviderRoutingService } from './messaging/routing/ProviderRoutingService';
-import { BasicMessageService } from './messaging/basicmessage/BasicMessageService';
-import { ConsumerRoutingService } from './messaging/routing/ConsumerRoutingService';
+} from './protocols/connections/handlers';
+import { ConnectionService } from './protocols/connections/ConnectionService';
+import { MessageType as ConnectionsMessageType } from './protocols/connections/messages';
+import { handleBasicMessage } from './protocols/basicmessage/handlers';
+import { MessageType as BasicMessageMessageType } from './protocols/basicmessage/messages';
+import { handleForwardMessage, handleRouteUpdateMessage } from './protocols/routing/handlers';
+import { MessageType as RoutingMessageType } from './protocols/routing/messages';
+import { ProviderRoutingService } from './protocols/routing/ProviderRoutingService';
+import { BasicMessageService } from './protocols/basicmessage/BasicMessageService';
+import { ConsumerRoutingService } from './protocols/routing/ConsumerRoutingService';
 import { Context } from './Context';
 import { MessageReceiver } from './MessageReceiver';
 import { BasicDispatcher } from './BasicDispatcher';
@@ -76,7 +76,7 @@ class Agent {
       throw new Error('Connection has no invitation assigned.');
     }
 
-    // If agent has inbound connection, which means it's using agency, we need to create a route for newly created 
+    // If agent has inbound connection, which means it's using agency, we need to create a route for newly created
     // connection verkey at agency.
     if (this.context.inboundConnection) {
       this.consumerRoutingService.createRoute(connection.verkey);

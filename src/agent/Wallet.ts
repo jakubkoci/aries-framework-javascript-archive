@@ -1,5 +1,5 @@
 import indy from 'indy-sdk';
-import logger from '../logger';
+import logger from './logger';
 import { InboundMessage, Message } from './types';
 import { sign } from './decorators';
 

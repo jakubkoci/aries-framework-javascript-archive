@@ -1,9 +1,9 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import config from './config';
-import logger from './logger';
-import { Agent, OutboundTransporter } from './agent/Agent';
-import { OutboundPackage } from './agent/types';
+import logger from '../agent/logger';
+import { Agent, OutboundTransporter } from '../agent/Agent';
+import { OutboundPackage } from '../agent/types';
 
 class StorageOutboundTransporter implements OutboundTransporter {
   messages: { [key: string]: any } = {};

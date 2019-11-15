@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const indy = require('indy-sdk');
-const { sign } = require('../agent/decorators');
+const { sign } = require('./decorators');
 
 describe('decorators', () => {
   const walletConfig = { id: 'wallet-1' + 'test1' };

@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { get, post } = require('../http');
-const { poll } = require('../polling');
-const { Agent } = require('../agent/Agent');
-const { decodeInvitationFromUrl } = require('../agent/helpers');
-const { toBeConnectedWith } = require('../agent/__tests__/utils');
+const { poll } = require('../../agent/polling');
+const { Agent } = require('../../agent/Agent');
+const { decodeInvitationFromUrl } = require('../../agent/helpers');
+const { toBeConnectedWith } = require('../../agent/__tests__/utils');
 
 jest.setTimeout(10000);
 

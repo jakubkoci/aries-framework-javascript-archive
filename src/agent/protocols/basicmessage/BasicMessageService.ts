@@ -1,10 +1,9 @@
-import { InboundMessage, Connection } from "../../types";
-import { createOutboundMessage } from "../helpers";
-import { createAckMessage } from "../connections/messages";
-import { createBasicMessage } from "./messages";
+import { InboundMessage, Connection } from '../../types';
+import { createOutboundMessage } from '../helpers';
+import { createAckMessage } from '../connections/messages';
+import { createBasicMessage } from './messages';
 
 class BasicMessageService {
-
   send(message: string, connection: Connection) {
     const basicMessage = createBasicMessage(message);
     return createOutboundMessage(connection, basicMessage);

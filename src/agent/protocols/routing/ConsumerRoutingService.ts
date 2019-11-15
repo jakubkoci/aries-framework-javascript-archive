@@ -1,4 +1,4 @@
-import logger from '../../../logger';
+import logger from '../../logger';
 import { createRouteUpdateMessage } from './messages';
 import { createOutboundMessage } from '../helpers';
 import { Context } from '../../Context';

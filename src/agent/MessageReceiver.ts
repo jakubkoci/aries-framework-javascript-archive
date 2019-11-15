@@ -1,4 +1,4 @@
-import logger from '../logger';
+import logger from './logger';
 import { Wallet } from './Wallet';
 import { InitConfig, Dispatcher } from './types';
 
