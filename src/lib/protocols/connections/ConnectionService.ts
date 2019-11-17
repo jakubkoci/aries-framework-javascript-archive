@@ -5,7 +5,7 @@ import {
   createConnectionResponseMessage,
   createAckMessage,
 } from './messages';
-import { Context } from '../../Context';
+import { Context } from '../../agent/Context';
 import { createOutboundMessage } from '../helpers';
 
 class ConnectionService {

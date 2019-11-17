@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import logger from '../agent/logger';
+import logger from '../lib/logger';
 
 export async function get(url: string) {
   logger.log('HTTP GET request url', url);

@@ -1,6 +1,7 @@
-import logger from './logger';
-import { Wallet } from './Wallet';
-import { InitConfig, Dispatcher } from './types';
+import logger from '../logger';
+import { Dispatcher } from './Dispatcher';
+import { Wallet } from '../wallet/Wallet';
+import { InitConfig } from '../types';
 
 class MessageReceiver {
   config: InitConfig;

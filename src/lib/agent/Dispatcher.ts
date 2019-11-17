@@ -1,7 +1,8 @@
-import { Dispatcher, Handler, OutboundMessage } from './types';
+import { OutboundMessage } from '../types';
+import { Handler } from '../handlers/Handler';
 import { MessageSender } from './MessageSender';
 
-class BasicDispatcher implements Dispatcher {
+class Dispatcher {
   handlers: { [key: string]: Handler } = {};
   messageSender: MessageSender;
 
@@ -18,7 +19,7 @@ class BasicDispatcher implements Dispatcher {
       throw new Error(`No handler for message type "${messageType}" found`);
     }
 
-    const outboundMessage = await handler(inboundMessage);
+    const outboundMessage = await handler.handle(inboundMessage);
     if (outboundMessage) {
       this.messageSender.sendMessage(outboundMessage);
     }
@@ -26,4 +27,4 @@ class BasicDispatcher implements Dispatcher {
   }
 }
 
-export { BasicDispatcher };
+export { Dispatcher };

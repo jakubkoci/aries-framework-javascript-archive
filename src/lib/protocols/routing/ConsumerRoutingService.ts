@@ -1,7 +1,7 @@
 import logger from '../../logger';
 import { createRouteUpdateMessage } from './messages';
 import { createOutboundMessage } from '../helpers';
-import { Context } from '../../Context';
+import { Context } from '../../agent/Context';
 
 class ConsumerRoutingService {
   context: Context;

@@ -1,40 +1,10 @@
 import indy from 'indy-sdk';
-import logger from './logger';
-import { InboundMessage, Message } from './types';
-import { sign } from './decorators';
+import logger from '../logger';
+import { InboundMessage, Message } from '../types';
+import { sign } from '../decorators';
+import { Wallet, WalletConfig, WalletCredentials, DidInfo, DidConfig } from './Wallet';
 
-interface Wallet {
-  init(): Promise<void>;
-  close(): Promise<void>;
-  delete(): Promise<void>;
-  initPublicDid(did: Did, seed: string): Promise<void>;
-  getPublicDid(): DidInfo | {};
-  createDid(didConfig?: DidConfig): Promise<[Did, Verkey]>;
-  pack(payload: {}, recipientKeys: Verkey[], senderVk: Verkey | null): Promise<JsonWebKey>;
-  unpack(messagePackage: JsonWebKey): Promise<InboundMessage>;
-  sign(message: Message, attribute: string, verkey: Verkey): Promise<Message>;
-  verify(signerVerkey: Verkey, data: Buffer, signature: Buffer): Promise<boolean>;
-}
-
-interface DidInfo {
-  did: Did;
-  verkey: Verkey;
-}
-
-interface DidConfig {
-  did: string;
-  seed: string;
-}
-
-interface WalletConfig {
-  id: string;
-}
-
-interface WalletCredentials {
-  key: string;
-}
-
-class IndyWallet implements Wallet {
+export class IndyWallet implements Wallet {
   wh?: number;
   walletConfig: WalletConfig;
   walletCredentials: WalletCredentials;
@@ -160,5 +130,3 @@ class IndyWallet implements Wallet {
     return indy.keyForLocalDid(this.wh, did);
   }
 }
-
-export { Wallet, IndyWallet };

@@ -1,7 +1,8 @@
-import logger from './logger';
-import { Wallet } from './Wallet';
-import { OutboundMessage, OutboundTransporter } from './types';
-import { createForwardMessage } from './protocols/routing/messages';
+import logger from '../logger';
+import { Wallet } from '../wallet/Wallet';
+import { OutboundMessage } from '../types';
+import { createForwardMessage } from '../protocols/routing/messages';
+import { OutboundTransporter } from './OutboundTransporter';
 
 class MessageSender {
   wallet: Wallet;

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { IndyWallet } = require('./Wallet');
+const { IndyWallet } = require('./IndyWallet');
 
 describe('Wallet', () => {
   const wallet = new IndyWallet({ id: 'test_wallet' }, { key: 'test_key' });

@@ -1,28 +1,29 @@
-import logger from './logger';
-import { Connection, InitConfig, Handler, OutboundTransporter } from './types';
-import { encodeInvitationToUrl, decodeInvitationFromUrl } from './helpers';
-import { IndyWallet } from './Wallet';
-import {
-  handleInvitation,
-  handleConnectionRequest,
-  handleConnectionResponse,
-  handleAckMessage,
-} from './protocols/connections/handlers';
-import { ConnectionService } from './protocols/connections/ConnectionService';
-import { MessageType as ConnectionsMessageType } from './protocols/connections/messages';
-import { handleBasicMessage } from './protocols/basicmessage/handlers';
-import { MessageType as BasicMessageMessageType } from './protocols/basicmessage/messages';
-import { handleForwardMessage, handleRouteUpdateMessage } from './protocols/routing/handlers';
-import { MessageType as RoutingMessageType } from './protocols/routing/messages';
-import { ProviderRoutingService } from './protocols/routing/ProviderRoutingService';
-import { BasicMessageService } from './protocols/basicmessage/BasicMessageService';
-import { ConsumerRoutingService } from './protocols/routing/ConsumerRoutingService';
+import logger from '../logger';
+import { Connection, InitConfig } from '../types';
+import { encodeInvitationToUrl, decodeInvitationFromUrl } from '../helpers';
+import { IndyWallet } from '../wallet/IndyWallet';
+import { ConnectionService } from '../protocols/connections/ConnectionService';
+import { MessageType as ConnectionsMessageType } from '../protocols/connections/messages';
+import { MessageType as BasicMessageMessageType } from '../protocols/basicmessage/messages';
+import { MessageType as RoutingMessageType } from '../protocols/routing/messages';
+import { ProviderRoutingService } from '../protocols/routing/ProviderRoutingService';
+import { BasicMessageService } from '../protocols/basicmessage/BasicMessageService';
+import { ConsumerRoutingService } from '../protocols/routing/ConsumerRoutingService';
 import { Context } from './Context';
 import { MessageReceiver } from './MessageReceiver';
-import { BasicDispatcher } from './BasicDispatcher';
+import { Dispatcher } from './Dispatcher';
 import { MessageSender } from './MessageSender';
+import { OutboundTransporter } from './OutboundTransporter';
+import { InvitationHandler } from '../handlers/InvitationHandler';
+import { ConnectionRequestHandler } from '../handlers/ConnectionRequestHandler';
+import { ConnectionResponseHandler } from '../handlers/ConnectionResponseHandler';
+import { AckMessageHandler } from '../handlers/AckMessageHandler';
+import { BasicMessageHandler } from '../handlers/BasicMessageHandler';
+import { RouteUpdateHandler } from '../handlers/RouteUpdateHandler';
+import { ForwardHandler } from '../handlers/ForwardHandler';
+import { Handler } from '../handlers/Handler';
 
-class Agent {
+export class Agent {
   context: Context;
   messageReceiver: MessageReceiver;
   connectionService: ConnectionService;
@@ -50,7 +51,7 @@ class Agent {
 
     this.registerHandlers();
 
-    const dispatcher = new BasicDispatcher(this.handlers, messageSender);
+    const dispatcher = new Dispatcher(this.handlers, messageSender);
     this.messageReceiver = new MessageReceiver(config, wallet, dispatcher);
   }
 
@@ -122,23 +123,21 @@ class Agent {
 
   private registerHandlers() {
     const handlers = {
-      [ConnectionsMessageType.ConnectionInvitation]: handleInvitation(
+      [ConnectionsMessageType.ConnectionInvitation]: new InvitationHandler(
         this.connectionService,
         this.consumerRoutingService
       ),
-      [ConnectionsMessageType.ConnectionRequest]: handleConnectionRequest(this.connectionService),
-      [ConnectionsMessageType.ConnectionResposne]: handleConnectionResponse(this.connectionService),
-      [ConnectionsMessageType.Ack]: handleAckMessage(this.connectionService),
-      [BasicMessageMessageType.BasicMessage]: handleBasicMessage(this.connectionService, this.basicMessageService),
-      [RoutingMessageType.RouteUpdateMessage]: handleRouteUpdateMessage(
+      [ConnectionsMessageType.ConnectionRequest]: new ConnectionRequestHandler(this.connectionService),
+      [ConnectionsMessageType.ConnectionResposne]: new ConnectionResponseHandler(this.connectionService),
+      [ConnectionsMessageType.Ack]: new AckMessageHandler(this.connectionService),
+      [BasicMessageMessageType.BasicMessage]: new BasicMessageHandler(this.connectionService, this.basicMessageService),
+      [RoutingMessageType.RouteUpdateMessage]: new RouteUpdateHandler(
         this.connectionService,
         this.providerRoutingService
       ),
-      [RoutingMessageType.ForwardMessage]: handleForwardMessage(this.providerRoutingService),
+      [RoutingMessageType.ForwardMessage]: new ForwardHandler(this.providerRoutingService),
     };
 
     this.handlers = handlers;
   }
 }
-
-export { Agent, OutboundTransporter };

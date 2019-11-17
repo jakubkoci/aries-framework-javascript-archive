@@ -1,5 +1,5 @@
-import { Wallet } from './Wallet';
-import { InitConfig, InboundConnection } from './types';
+import { Wallet } from '../wallet/Wallet';
+import { InitConfig, InboundConnection } from '../types';
 import { MessageSender } from './MessageSender';
 
 export interface Context {
