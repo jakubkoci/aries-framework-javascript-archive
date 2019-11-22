@@ -7,8 +7,8 @@
     "tsc": "tsc",
     "lint": "eslint '**/*.ts'",
     "test": "jest",
-    "dev": "ts-node-dev --respawn --transpileOnly ./src/agency.ts",
-    "prod": "tsc && node ./build/agency.js"
+    "dev": "ts-node-dev --respawn --transpileOnly ./src/samples/agency.ts",
+    "prod": "rm -rf build && tsc && node ./build/samples/agency.js"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",
