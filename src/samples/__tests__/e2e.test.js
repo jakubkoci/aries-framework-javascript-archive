@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-var-requires */
+const { poll } = require('await-poll');
 const { get, post } = require('../http');
-const { poll } = require('../../lib/polling');
 const { Agent, decodeInvitationFromUrl } = require('../../lib');
 const { toBeConnectedWith } = require('../../lib/__tests__/utils');
 
@@ -136,7 +136,7 @@ function pollMessages(agent, agencyUrl, verkey) {
       }
     },
     () => true,
-    1000
+    500
   );
 }
 

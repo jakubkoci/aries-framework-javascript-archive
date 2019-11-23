@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Subject } = require('rxjs');
-const { poll } = require('../polling');
+const { poll } = require('await-poll');
 const { Agent, decodeInvitationFromUrl } = require('../');
 const { toBeConnectedWith } = require('./utils');
 
@@ -52,7 +52,7 @@ describe('agents', () => {
     const aliceConnectionAtAliceBob = await poll(
       () => aliceAgent.findConnectionByMyKey(aliceKeyAtAliceBob),
       connection => connection.state !== 4,
-      200
+      100
     );
     console.log('aliceConnectionAtAliceBob\n', aliceConnectionAtAliceBob);
 
@@ -60,7 +60,7 @@ describe('agents', () => {
     const bobConnectionAtBobAlice = await poll(
       () => bobAgent.findConnectionByMyKey(bobKeyAtBobAlice),
       connection => connection.state !== 4,
-      200
+      100
     );
     console.log('bobConnectionAtAliceBob\n', bobConnectionAtBobAlice);
 
