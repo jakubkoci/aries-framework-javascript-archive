@@ -1,14 +1,15 @@
 type $FixMe = any;
-type WireMessage = $FixMe;
+
+export type WireMessage = $FixMe;
 
 export interface InitConfig {
-  url: string;
-  port: string | number;
+  url?: string;
+  port?: string | number;
   label: string;
   walletName: string;
   walletKey: string;
-  publicDid: Did;
-  publicDidSeed: string;
+  publicDid?: Did;
+  publicDidSeed?: string;
 }
 
 export enum ConnectionState {

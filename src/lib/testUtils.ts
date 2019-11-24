@@ -1,6 +1,8 @@
+import { Connection } from './types';
+
 // Custom matchers which can be used to extend Jest matchers via extend, e. g. `expect.extend({ toBeConnectedWith })`.
 
-function toBeConnectedWith(received, connection) {
+export function toBeConnectedWith(received: Connection, connection: Connection) {
   const pass = received.did === connection.theirDid && received.verkey === connection.theirKey;
   if (pass) {
     return {
@@ -14,7 +16,3 @@ function toBeConnectedWith(received, connection) {
     };
   }
 }
-
-module.exports = {
-  toBeConnectedWith,
-};

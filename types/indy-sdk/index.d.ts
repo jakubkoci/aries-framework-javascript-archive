@@ -8,6 +8,7 @@ declare module 'indy-sdk' {
   function cryptoAnonCrypt(recipientVk: Verkey, messageRaw: Buffer): Promise<Buffer>;
   function cryptoSign(wh: WalletHandle, signerVk: Verkey, messageRaw: Buffer): Promise<Buffer>;
   function cryptoVerify(signerVk: Verkey, messageRaw: Buffer, signatureRaw: Buffer): boolean;
+  function createKey(wh: WalletHandle, key: KeyConfig): Promise<Verkey>;
   function packMessage(
     wh: WalletHandle,
     message: Buffer,
@@ -21,3 +22,7 @@ type WalletHandle = number;
 type Did = string;
 type Verkey = string;
 type ByteArray = number[];
+
+interface KeyConfig {
+  seed?: string;
+}

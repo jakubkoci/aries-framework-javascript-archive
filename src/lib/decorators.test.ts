@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const indy = require('indy-sdk');
-const { sign } = require('./decorators');
+import indy from 'indy-sdk';
+import { sign } from './decorators';
 
 describe('decorators', () => {
   const walletConfig = { id: 'wallet-1' + 'test1' };
   const walletCredentials = { key: 'key' };
-  let wh;
+  let wh: WalletHandle;
 
   beforeAll(async () => {
     await indy.createWallet(walletConfig, walletCredentials);

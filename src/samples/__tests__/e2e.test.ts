@@ -1,9 +1,10 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-var-requires */
-const { poll } = require('await-poll');
-const { get, post } = require('../http');
-const { Agent, decodeInvitationFromUrl } = require('../../lib');
-const { toBeConnectedWith } = require('../../lib/__tests__/utils');
+// @ts-ignore
+import { poll } from 'await-poll';
+import { Agent, decodeInvitationFromUrl, OutboundTransporter } from '../../lib';
+import { Connection, WireMessage, OutboundPackage } from '../../lib/types';
+import { get, post } from '../http';
+import { toBeConnectedWith } from '../../lib/testUtils';
 
 jest.setTimeout(10000);
 
@@ -22,8 +23,8 @@ const bobConfig = {
 };
 
 describe('with agency', () => {
-  let aliceAgent;
-  let bobAgent;
+  let aliceAgent: Agent;
+  let bobAgent: Agent;
 
   test('make a connection with agency', async () => {
     const aliceAgencyUrl = `http://localhost:3001`;
@@ -48,14 +49,14 @@ describe('with agency', () => {
 
     const aliceConnectionAtAliceAgency = await poll(
       () => aliceAgent.findConnectionByMyKey(aliceKeyAtAliceAgency),
-      connection => connection.state !== 4,
+      (connection: Connection) => connection.state !== 4,
       200
     );
     console.log('aliceConnectionAtAliceAgency\n', aliceConnectionAtAliceAgency);
 
     const bobConnectionAtBobAgency = await poll(
       () => bobAgent.findConnectionByMyKey(bobKeyAtBobAgency),
-      connection => connection.state !== 4,
+      (connection: Connection) => connection.state !== 4,
       200
     );
     console.log('bobConnectionAtBobAgency\n', bobConnectionAtBobAgency);
@@ -86,7 +87,7 @@ describe('with agency', () => {
 
     const aliceConnectionAtAliceBob = await poll(
       () => aliceAgent.findConnectionByMyKey(aliceKeyAtAliceBob),
-      connection => connection.state !== 4,
+      (connection: Connection) => connection.state !== 4,
       200
     );
     console.log('aliceConnectionAtAliceBob\n', aliceConnectionAtAliceBob);
@@ -94,7 +95,7 @@ describe('with agency', () => {
     const bobKeyAtBobAlice = aliceConnectionAtAliceBob.theirKey;
     const bobConnectionAtBobAlice = await poll(
       () => bobAgent.findConnectionByMyKey(bobKeyAtBobAlice),
-      connection => connection.state !== 4,
+      (connection: Connection) => connection.state !== 4,
       200
     );
     console.log('bobConnectionAtAliceBob\n', bobConnectionAtBobAlice);
@@ -120,14 +121,14 @@ describe('with agency', () => {
         const connections = bobAgent.getConnections();
         return connections[1].messages;
       },
-      messages => messages.length < 1
+      (messages: WireMessage[]) => messages.length < 1
     );
     console.log(bobMessages);
     expect(bobMessages[0].content).toBe(message);
   });
 });
 
-function pollMessages(agent, agencyUrl, verkey) {
+function pollMessages(agent: Agent, agencyUrl: string, verkey: Verkey) {
   poll(
     async () => {
       const message = await get(`${agencyUrl}/api/connections/${verkey}/message`);
@@ -140,8 +141,8 @@ function pollMessages(agent, agencyUrl, verkey) {
   );
 }
 
-class HttpOutboundTransporter {
-  async sendMessage(outboundPackage) {
+class HttpOutboundTransporter implements OutboundTransporter {
+  async sendMessage(outboundPackage: OutboundPackage) {
     const { payload, endpoint } = outboundPackage;
 
     if (!endpoint) {

@@ -89,6 +89,11 @@ export class Agent {
   async acceptInvitationUrl(invitationUrl: string) {
     const invitation = decodeInvitationFromUrl(invitationUrl);
     const verkey = await this.messageReceiver.receiveMessage(invitation);
+
+    if (!verkey) {
+      throw new Error('No verkey has been return');
+    }
+
     return verkey;
   }
 

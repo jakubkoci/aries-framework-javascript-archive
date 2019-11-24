@@ -1,9 +1,11 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-var-requires */
-const { Subject } = require('rxjs');
-const { poll } = require('await-poll');
-const { Agent, decodeInvitationFromUrl } = require('../');
-const { toBeConnectedWith } = require('./utils');
+// @ts-ignore
+import { poll } from 'await-poll';
+import { Subject } from 'rxjs';
+import { Agent, decodeInvitationFromUrl } from '..';
+import { toBeConnectedWith } from '../testUtils';
+import { Connection, OutboundPackage, WireMessage } from '../types';
+import { OutboundTransporter } from '../agent/OutboundTransporter';
 
 jest.setTimeout(10000);
 
@@ -22,8 +24,8 @@ const bobConfig = {
 };
 
 describe('agents', () => {
-  let aliceAgent;
-  let bobAgent;
+  let aliceAgent: Agent;
+  let bobAgent: Agent;
 
   test('make a connection between agents', async () => {
     const aliceMessages = new Subject();
@@ -51,7 +53,7 @@ describe('agents', () => {
 
     const aliceConnectionAtAliceBob = await poll(
       () => aliceAgent.findConnectionByMyKey(aliceKeyAtAliceBob),
-      connection => connection.state !== 4,
+      (connection: Connection) => connection.state !== 4,
       100
     );
     console.log('aliceConnectionAtAliceBob\n', aliceConnectionAtAliceBob);
@@ -59,7 +61,7 @@ describe('agents', () => {
     const bobKeyAtBobAlice = aliceConnectionAtAliceBob.theirKey;
     const bobConnectionAtBobAlice = await poll(
       () => bobAgent.findConnectionByMyKey(bobKeyAtBobAlice),
-      connection => connection.state !== 4,
+      (connection: Connection) => connection.state !== 4,
       100
     );
     console.log('bobConnectionAtAliceBob\n', bobConnectionAtBobAlice);
@@ -85,19 +87,21 @@ describe('agents', () => {
         const connections = bobAgent.getConnections();
         return connections[0].messages;
       },
-      messages => messages.length < 1
+      (messages: WireMessage[]) => messages.length < 1
     );
     console.log(bobMessages);
     expect(bobMessages[0].content).toBe(message);
   });
 });
 
-class SubjectOutboundTransporter {
-  constructor(subject) {
+class SubjectOutboundTransporter implements OutboundTransporter {
+  subject: Subject<WireMessage>;
+
+  constructor(subject: Subject<WireMessage>) {
     this.subject = subject;
   }
 
-  sendMessage(outboundPackage) {
+  sendMessage(outboundPackage: OutboundPackage) {
     console.log('Sending message...');
     const { payload } = outboundPackage;
     console.log(payload);
@@ -105,8 +109,8 @@ class SubjectOutboundTransporter {
   }
 }
 
-function subscribe(agent, subject) {
+function subscribe(agent: Agent, subject: Subject<WireMessage>) {
   subject.subscribe({
-    next: message => agent.receiveMessage(message),
+    next: (message: WireMessage) => agent.receiveMessage(message),
   });
 }
