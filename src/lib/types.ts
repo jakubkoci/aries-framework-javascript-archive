@@ -10,6 +10,7 @@ export interface InitConfig {
   walletKey: string;
   publicDid?: Did;
   publicDidSeed?: string;
+  agencyUrl?: string;
 }
 
 export enum ConnectionState {

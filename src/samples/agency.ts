@@ -1,9 +1,26 @@
-import express from 'express';
+import express, { Express } from 'express';
 import bodyParser from 'body-parser';
 import config from './config';
 import logger from '../lib/logger';
-import { Agent, OutboundTransporter } from '../lib';
+import { Agent, InboundTransporter, OutboundTransporter } from '../lib';
 import { OutboundPackage } from '../lib/types';
+
+class HttpInboundTransporter implements InboundTransporter {
+  app: Express;
+
+  constructor(app: Express) {
+    this.app = app;
+  }
+
+  start(agent: Agent) {
+    this.app.post('/msg', async (req, res) => {
+      const message = req.body;
+      const packedMessage = JSON.parse(message);
+      await agent.receiveMessage(packedMessage);
+      res.status(200).end();
+    });
+  }
+}
 
 class StorageOutboundTransporter implements OutboundTransporter {
   messages: { [key: string]: any } = {};
@@ -39,11 +56,12 @@ class StorageOutboundTransporter implements OutboundTransporter {
 const PORT = config.port;
 const app = express();
 
-const messageSender = new StorageOutboundTransporter();
-const agent = new Agent(config, messageSender);
-
 app.use(bodyParser.text());
 app.set('json spaces', 2);
+
+const messageSender = new StorageOutboundTransporter();
+const messageReceiver = new HttpInboundTransporter(app);
+const agent = new Agent(config, messageReceiver, messageSender);
 
 app.get('/', async (req, res) => {
   const agentDid = agent.getPublicDid();
@@ -54,13 +72,6 @@ app.get('/', async (req, res) => {
 app.get('/invitation', async (req, res) => {
   const invitationUrl = await agent.createInvitationUrl();
   res.send(invitationUrl);
-});
-
-app.post('/msg', async (req, res) => {
-  const message = req.body;
-  const packedMessage = JSON.parse(message);
-  await agent.receiveMessage(packedMessage);
-  res.status(200).end();
 });
 
 app.get('/api/connections/:verkey/message', async (req, res) => {
@@ -95,5 +106,6 @@ app.get('/api/messages', async (req, res) => {
 
 app.listen(PORT, async () => {
   await agent.init();
+  messageReceiver.start(agent);
   logger.log(`Application started on port ${PORT}`);
 });
