@@ -22,8 +22,10 @@ import { BasicMessageHandler } from '../handlers/BasicMessageHandler';
 import { RouteUpdateHandler } from '../handlers/RouteUpdateHandler';
 import { ForwardHandler } from '../handlers/ForwardHandler';
 import { Handler } from '../handlers/Handler';
+import { InboundTransporter } from './InboundTransporter';
 
 export class Agent {
+  inboundTransporter: InboundTransporter;
   context: Context;
   messageReceiver: MessageReceiver;
   connectionService: ConnectionService;
@@ -32,11 +34,13 @@ export class Agent {
   consumerRoutingService: ConsumerRoutingService;
   handlers: { [key: string]: Handler } = {};
 
-  constructor(config: InitConfig, outboundTransporter: OutboundTransporter) {
+  constructor(config: InitConfig, inboundTransporter: InboundTransporter, outboundTransporter: OutboundTransporter) {
     logger.logJson('Creating agent with config', config);
 
     const wallet = new IndyWallet({ id: config.walletName }, { key: config.walletKey });
     const messageSender = new MessageSender(wallet, outboundTransporter);
+
+    this.inboundTransporter = inboundTransporter;
 
     this.context = {
       config,
@@ -63,6 +67,8 @@ export class Agent {
       // If an agent has publicDid it will be used as routing key.
       this.context.wallet.initPublicDid(publicDid, publicDidSeed);
     }
+
+    return this.inboundTransporter.start(this);
   }
 
   getPublicDid() {
@@ -124,6 +130,14 @@ export class Agent {
   async sendMessageToConnection(connection: Connection, message: string) {
     const outboundMessage = this.basicMessageService.send(message, connection);
     await this.context.messageSender.sendMessage(outboundMessage);
+  }
+
+  getAgencyUrl() {
+    return this.context.config.agencyUrl;
+  }
+
+  getInboundConnection() {
+    return this.context.inboundConnection;
   }
 
   private registerHandlers() {

@@ -1,12 +1,12 @@
 /* eslint-disable no-console */
 // @ts-ignore
 import { poll } from 'await-poll';
-import { Agent, decodeInvitationFromUrl, OutboundTransporter } from '../../lib';
+import { Agent, decodeInvitationFromUrl, OutboundTransporter, InboundTransporter } from '../../lib';
 import { Connection, WireMessage, OutboundPackage } from '../../lib/types';
 import { get, post } from '../http';
 import { toBeConnectedWith } from '../../lib/testUtils';
 
-jest.setTimeout(10000);
+jest.setTimeout(15000);
 
 expect.extend({ toBeConnectedWith });
 
@@ -14,12 +14,14 @@ const aliceConfig = {
   label: 'e2e Alice',
   walletName: 'e2e-alice',
   walletKey: '00000000000000000000000000000Test01',
+  agencyUrl: 'http://localhost:3001',
 };
 
 const bobConfig = {
   label: 'e2e Bob',
   walletName: 'e2e-bob',
   walletKey: '00000000000000000000000000000Test02',
+  agencyUrl: 'http://localhost:3002',
 };
 
 describe('with agency', () => {
@@ -27,53 +29,39 @@ describe('with agency', () => {
   let bobAgent: Agent;
 
   test('make a connection with agency', async () => {
-    const aliceAgencyUrl = `http://localhost:3001`;
-    const bobAgencyUrl = `http://localhost:3002`;
     const aliceAgentSender = new HttpOutboundTransporter();
+    const aliceAgentReceiver = new PollingInboundTransporter();
     const bobAgentSender = new HttpOutboundTransporter();
+    const bobAgentReceiver = new PollingInboundTransporter();
 
-    aliceAgent = new Agent(aliceConfig, aliceAgentSender);
+    aliceAgent = new Agent(aliceConfig, aliceAgentReceiver, aliceAgentSender);
     await aliceAgent.init();
 
-    bobAgent = new Agent(bobConfig, bobAgentSender);
+    bobAgent = new Agent(bobConfig, bobAgentReceiver, bobAgentSender);
     await bobAgent.init();
 
-    const aliceAgencyInvitationUrl = await get(`${aliceAgencyUrl}/invitation`);
-    const aliceKeyAtAliceAgency = await aliceAgent.acceptInvitationUrl(aliceAgencyInvitationUrl);
+    const aliceInbound = aliceAgent.getInboundConnection();
+    const aliceInboundConnection = aliceInbound && aliceInbound.connection;
+    const aliceKeyAtAliceAgency = aliceInboundConnection && aliceInboundConnection.verkey;
 
-    const bobAgencyInvitationUrl = await get(`${bobAgencyUrl}/invitation`);
-    const bobKeyAtBobAgency = await bobAgent.acceptInvitationUrl(bobAgencyInvitationUrl);
+    console.log('aliceInboundConnection', aliceInboundConnection);
 
-    pollMessages(aliceAgent, aliceAgencyUrl, aliceKeyAtAliceAgency);
-    pollMessages(bobAgent, bobAgencyUrl, bobKeyAtBobAgency);
+    const bobInbound = bobAgent.getInboundConnection();
+    const bobInboundConnection = bobInbound && bobInbound.connection;
+    const bobKeyAtBobAgency = bobInboundConnection && bobInboundConnection.verkey;
 
-    const aliceConnectionAtAliceAgency = await poll(
-      () => aliceAgent.findConnectionByMyKey(aliceKeyAtAliceAgency),
-      (connection: Connection) => connection.state !== 4,
-      200
-    );
-    console.log('aliceConnectionAtAliceAgency\n', aliceConnectionAtAliceAgency);
-
-    const bobConnectionAtBobAgency = await poll(
-      () => bobAgent.findConnectionByMyKey(bobKeyAtBobAgency),
-      (connection: Connection) => connection.state !== 4,
-      200
-    );
-    console.log('bobConnectionAtBobAgency\n', bobConnectionAtBobAgency);
+    console.log('bobInboundConnection', bobInboundConnection);
 
     // TODO This endpoint currently exists at agency only for the testing purpose. It returns agency's part of the pairwise connection.
     const agencyConnectionAtAliceAgency = JSON.parse(
-      await get(`${aliceAgencyUrl}/api/connections/${aliceKeyAtAliceAgency}`)
+      await get(`${aliceAgent.getAgencyUrl()}/api/connections/${aliceKeyAtAliceAgency}`)
     );
-    const agencyConnectionAtBobAgency = JSON.parse(await get(`${bobAgencyUrl}/api/connections/${bobKeyAtBobAgency}`));
+    const agencyConnectionAtBobAgency = JSON.parse(
+      await get(`${bobAgent.getAgencyUrl()}/api/connections/${bobKeyAtBobAgency}`)
+    );
 
-    const { verkey: aliceAgencyVerkey } = JSON.parse(await get(`${aliceAgencyUrl}/`));
-    const { verkey: bobAgencyVerkey } = JSON.parse(await get(`${bobAgencyUrl}/`));
-    aliceAgent.establishInbound(aliceAgencyVerkey, aliceConnectionAtAliceAgency);
-    bobAgent.establishInbound(bobAgencyVerkey, bobConnectionAtBobAgency);
-
-    expect(aliceConnectionAtAliceAgency).toBeConnectedWith(agencyConnectionAtAliceAgency);
-    expect(bobConnectionAtBobAgency).toBeConnectedWith(agencyConnectionAtBobAgency);
+    expect(aliceInboundConnection).toBeConnectedWith(agencyConnectionAtAliceAgency);
+    expect(bobInboundConnection).toBeConnectedWith(agencyConnectionAtBobAgency);
   });
 
   test('make a connection via agency', async () => {
@@ -121,24 +109,50 @@ describe('with agency', () => {
         const connections = bobAgent.getConnections();
         return connections[1].messages;
       },
-      (messages: WireMessage[]) => messages.length < 1
+      (messages: WireMessage[]) => messages.length < 1,
+      100
     );
     console.log(bobMessages);
     expect(bobMessages[0].content).toBe(message);
   });
 });
 
-function pollMessages(agent: Agent, agencyUrl: string, verkey: Verkey) {
-  poll(
-    async () => {
-      const message = await get(`${agencyUrl}/api/connections/${verkey}/message`);
-      if (message && message.length > 0) {
-        agent.receiveMessage(JSON.parse(message));
-      }
-    },
-    () => true,
-    500
-  );
+class PollingInboundTransporter implements InboundTransporter {
+  async start(agent: Agent) {
+    await this.registerAgency(agent);
+  }
+
+  async registerAgency(agent: Agent) {
+    const agencyUrl = agent.getAgencyUrl() || '';
+    const agencyInvitationUrl = await get(`${agencyUrl}/invitation`);
+    const agentKeyAtAgency = await agent.acceptInvitationUrl(agencyInvitationUrl);
+
+    this.pollMessages(agent, agencyUrl, agentKeyAtAgency);
+
+    const agentConnectionAtAgency = await poll(
+      () => agent.findConnectionByMyKey(agentKeyAtAgency),
+      (connection: Connection) => connection.state !== 4,
+      100
+    );
+
+    console.log('agentConnectionAtAgency\n', agentConnectionAtAgency);
+
+    const { verkey: agencyVerkey } = JSON.parse(await get(`${agencyUrl}/`));
+    agent.establishInbound(agencyVerkey, agentConnectionAtAgency);
+  }
+
+  pollMessages(agent: Agent, agencyUrl: string, verkey: Verkey) {
+    poll(
+      async () => {
+        const message = await get(`${agencyUrl}/api/connections/${verkey}/message`);
+        if (message && message.length > 0) {
+          agent.receiveMessage(JSON.parse(message));
+        }
+      },
+      () => true,
+      100
+    );
+  }
 }
 
 class HttpOutboundTransporter implements OutboundTransporter {

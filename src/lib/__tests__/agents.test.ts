@@ -2,10 +2,9 @@
 // @ts-ignore
 import { poll } from 'await-poll';
 import { Subject } from 'rxjs';
-import { Agent, decodeInvitationFromUrl } from '..';
+import { Agent, decodeInvitationFromUrl, InboundTransporter, OutboundTransporter } from '..';
 import { toBeConnectedWith } from '../testUtils';
 import { Connection, OutboundPackage, WireMessage } from '../types';
-import { OutboundTransporter } from '../agent/OutboundTransporter';
 
 jest.setTimeout(10000);
 
@@ -31,17 +30,17 @@ describe('agents', () => {
     const aliceMessages = new Subject();
     const bobMessages = new Subject();
 
-    const aliceAgentSender = new SubjectOutboundTransporter(bobMessages);
-    const bobAgentSender = new SubjectOutboundTransporter(aliceMessages);
+    const aliceAgentInbound = new SubjectInboundTransporter(aliceMessages);
+    const aliceAgentOutbound = new SubjectOutboundTransporter(bobMessages);
 
-    aliceAgent = new Agent(aliceConfig, aliceAgentSender);
+    const bobAgentInbound = new SubjectInboundTransporter(bobMessages);
+    const bobAgentOutbound = new SubjectOutboundTransporter(aliceMessages);
+
+    aliceAgent = new Agent(aliceConfig, aliceAgentInbound, aliceAgentOutbound);
     await aliceAgent.init();
 
-    bobAgent = new Agent(bobConfig, bobAgentSender);
+    bobAgent = new Agent(bobConfig, bobAgentInbound, bobAgentOutbound);
     await bobAgent.init();
-
-    subscribe(aliceAgent, aliceMessages);
-    subscribe(bobAgent, bobMessages);
 
     const invitationUrl = await aliceAgent.createInvitationUrl();
     await bobAgent.acceptInvitationUrl(invitationUrl);
@@ -94,6 +93,24 @@ describe('agents', () => {
   });
 });
 
+class SubjectInboundTransporter implements InboundTransporter {
+  subject: Subject<WireMessage>;
+
+  constructor(subject: Subject<WireMessage>) {
+    this.subject = subject;
+  }
+
+  start(agent: Agent) {
+    this.subscribe(agent, this.subject);
+  }
+
+  subscribe(agent: Agent, subject: Subject<WireMessage>) {
+    subject.subscribe({
+      next: (message: WireMessage) => agent.receiveMessage(message),
+    });
+  }
+}
+
 class SubjectOutboundTransporter implements OutboundTransporter {
   subject: Subject<WireMessage>;
 
@@ -107,10 +124,4 @@ class SubjectOutboundTransporter implements OutboundTransporter {
     console.log(payload);
     this.subject.next(payload);
   }
-}
-
-function subscribe(agent: Agent, subject: Subject<WireMessage>) {
-  subject.subscribe({
-    next: (message: WireMessage) => agent.receiveMessage(message),
-  });
 }
