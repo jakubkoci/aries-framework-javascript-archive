@@ -1,4 +1,4 @@
 export { Agent } from './agent/Agent';
-export { InboundTransporter } from './agent/InboundTransporter';
-export { OutboundTransporter } from './agent/OutboundTransporter';
+export { InboundTransporter } from './transport/InboundTransporter';
+export { OutboundTransporter } from './transport/OutboundTransporter';
 export { decodeInvitationFromUrl } from './helpers';

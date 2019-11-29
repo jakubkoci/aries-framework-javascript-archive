@@ -2,7 +2,7 @@ import logger from '../logger';
 import { Wallet } from '../wallet/Wallet';
 import { OutboundMessage } from '../types';
 import { createForwardMessage } from '../protocols/routing/messages';
-import { OutboundTransporter } from './OutboundTransporter';
+import { OutboundTransporter } from '../transport/OutboundTransporter';
 
 class MessageSender {
   wallet: Wallet;

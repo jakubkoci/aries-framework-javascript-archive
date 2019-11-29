@@ -13,7 +13,8 @@ import { Context } from './Context';
 import { MessageReceiver } from './MessageReceiver';
 import { Dispatcher } from './Dispatcher';
 import { MessageSender } from './MessageSender';
-import { OutboundTransporter } from './OutboundTransporter';
+import { InboundTransporter } from '../transport/InboundTransporter';
+import { OutboundTransporter } from '../transport/OutboundTransporter';
 import { InvitationHandler } from '../handlers/InvitationHandler';
 import { ConnectionRequestHandler } from '../handlers/ConnectionRequestHandler';
 import { ConnectionResponseHandler } from '../handlers/ConnectionResponseHandler';
@@ -22,7 +23,6 @@ import { BasicMessageHandler } from '../handlers/BasicMessageHandler';
 import { RouteUpdateHandler } from '../handlers/RouteUpdateHandler';
 import { ForwardHandler } from '../handlers/ForwardHandler';
 import { Handler } from '../handlers/Handler';
-import { InboundTransporter } from './InboundTransporter';
 
 export class Agent {
   inboundTransporter: InboundTransporter;

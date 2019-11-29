@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 // @ts-ignore
 import { poll } from 'await-poll';
-import { Agent, decodeInvitationFromUrl, OutboundTransporter, InboundTransporter } from '../../lib';
+import { Agent, decodeInvitationFromUrl, InboundTransporter, OutboundTransporter } from '../../lib';
 import { Connection, WireMessage, OutboundPackage } from '../../lib/types';
 import { get, post } from '../http';
 import { toBeConnectedWith } from '../../lib/testUtils';
