@@ -1,10 +1,10 @@
 import { Connection, InboundMessage } from '../../types';
 import { createOutboundMessage } from '../helpers';
 
-type RouteUpdate = {
+interface RouteUpdate {
   action: 'add' | 'remove';
   recipient_key: Verkey;
-};
+}
 
 class ProviderRoutingService {
   routingTable: { [recipientKey: string]: Connection } = {};
